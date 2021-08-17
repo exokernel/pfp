@@ -24,7 +24,6 @@ fn parallelize(command: &str, input: Vec<String>) -> Result<Output> {
 }
 
 fn main() {
-
     
     loop {
         // 1. get a whole set of input (e.g. names of all files in some directory)
