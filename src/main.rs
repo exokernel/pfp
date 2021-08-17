@@ -6,7 +6,7 @@ use std::process::{Command, Stdio, Output};
 /// Execute command in a subprocess using Gnu Parallel with given input
 /// Runs parallel instances of command with on item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
-fn parallelize(command: &str, input: &'static [String]) -> Result<Output> {
+fn parallelize(command: &str, input: Vec<String>) -> Result<Output> {
     
     let mut child = Command::new("parallel")
         .arg(command)
@@ -30,10 +30,8 @@ fn main() {
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
         let v: Vec<String> = (0..101).map(|x| x.to_string()).collect();
-        let v2 = vec!["Hello", "world!"];
-        let v3 = vec!["Hello".to_owned(), "world!".to_owned()];
 
-        // 2. break it into chucks of a specified size
+        // 2. process chunks of input in parallel
         let chunksize = 50;
         let numchunks = v.len()/chunksize; // 2
         let leftover = v.len() % chunksize; // 1
@@ -47,35 +45,23 @@ fn main() {
         // chunk 2: &v[index..chunksize] [50..100] 50-99 50-things
         // chunk 3: &v[index..(chunksize*2+1)] [100..101] 100 1-thing
 
-        let mut chunks = vec![];
         for i in 0..numchunks {
             println!("chunk {}", i + 1);
             let index = chunksize*i;
-            // Each chunk is reference into the String Vector?
-            chunks.push(&v[index..(index+chunksize)]);
+            let chunk = (&v[index..(index+chunksize)]).to_vec();
+            let output = parallelize("echo {#}-{%}-{}", chunk);
+            println!("{}",  String::from_utf8_lossy(&output.unwrap().stdout));
         }
+        // last chunk
         if leftover != 0 {
+            println!("chunk {}", numchunks + 1);
             let index = chunksize*numchunks;
-            chunks.push(&v[index..(index+leftover)])
-        }
-
-        let mut i = 0;
-        for c in chunks {
-            println!("chunk {}", i);
-            for s in c {
-                println!("{}", s);
-            }
-            i = i + 1;
+            let chunk = (&v[index..(index+leftover)]).to_vec();
+            let output = parallelize("echo {#}-{%}-{}", chunk);
+            println!("{}",  String::from_utf8_lossy(&output.unwrap().stdout));
         }
 
         break;
-        // 3. process each chunk in parallel 
-        //for c in chunks {
-        //    // c is a chunk w/ chunksize elements
-        //    let output = parallelize("echo {%}-{#}-{}", c);
-        //    println!("{}", String::from_utf8_lossy(&output.unwrap().stdout));
-        //}
-
-        // 4. Do any necessary postprocessing
+        // 3. Do any necessary postprocessing
     }
 }
