@@ -1,12 +1,11 @@
-use std::io::{Write,Result};
+use std::io::{Write};
 use std::process::{Command, Stdio, Output};
 //use std::error::Error;
 
-//fn parallelize(command: &str, input: Vec<String>) -> Result<Output> {
 /// Execute command in a subprocess using Gnu Parallel with given input
 /// Runs parallel instances of command with on item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
-fn parallelize(command: &str, input: Vec<String>) -> Result<Output> {
+fn parallelize(command: &str, input: Vec<String>) -> Output {
     
     let mut child = Command::new("parallel")
         .arg(command)
@@ -20,7 +19,7 @@ fn parallelize(command: &str, input: Vec<String>) -> Result<Output> {
         stdin.write_all(input.join("\n").as_bytes()).expect("Failed to write to stdin");
     });
     
-    child.wait_with_output()//.expect("Failed to read stdout");
+    return child.wait_with_output().expect("Failed to read stdout");
 }
 
 fn main() {
@@ -49,7 +48,7 @@ fn main() {
             let index = chunksize*i;
             let chunk = (&v[index..(index+chunksize)]).to_vec();
             let output = parallelize("echo {#}-{%}-{}", chunk);
-            println!("{}",  String::from_utf8_lossy(&output.unwrap().stdout));
+            println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
         // last chunk
         if leftover != 0 {
@@ -57,7 +56,7 @@ fn main() {
             let index = chunksize*numchunks;
             let chunk = (&v[index..(index+leftover)]).to_vec();
             let output = parallelize("echo {#}-{%}-{}", chunk);
-            println!("{}",  String::from_utf8_lossy(&output.unwrap().stdout));
+            println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
 
         break;
