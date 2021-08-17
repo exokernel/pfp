@@ -39,9 +39,9 @@ fn main() {
         // ??? how to break input up into chunks
   
         // Each chunk is a reference to slice of our Vec<String>:  &[String] &["foo", "bar",...,"baz"]
-        // chunk 1: &v[index..(start+chunksize)] [0..50] 0-49 50-things
-        // chunk 2: &v[index..chunksize] [50..100] 50-99 50-things
-        // chunk 3: &v[index..(chunksize*2+1)] [100..101] 100 1-thing
+        // chunk 1:  [0..50] 0-49 50-things
+        // chunk 2:  [50..100] 50-99 50-things
+        // chunk 3:  [100..101] 100 1-thing
 
         for i in 0..numchunks {
             println!("chunk {}", i + 1);
