@@ -6,13 +6,14 @@ write_to_db() {
 
 cleanup() {
     echo cleaning up $file and $file.md5
+    rm $1 $2
 }
 
 file=$1
 
 md5sum $file > $file.md5
 
-#(tar -cvz -f - $file $file.md5 | ./encrypt.sh | ./upload.sh) && write_to_db && cleanup 
+#(tar -cvz -f - $file $file.md5 | ./encrypt.sh | ./upload.sh) && write_to_db && cleanup $file $file.md5
 
 #tar -cvz -f - $file $file.md5
 
