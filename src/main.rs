@@ -77,10 +77,14 @@ fn get_files(dir: &Path) -> io::Result<Vec<String>> {
     Ok(files)
 }
 
-/// Do the thing
+/// Do the thing forever unless interrupted.
+/// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
+/// Wait for each chunk to complete before processing the next chunk
+/// TODO: Possibly sleep after processing each chunk?
 fn run(chunk_size: usize, job_slots: String, input_path: String)
    -> Result<(),Box<dyn Error>> {
 
+    // Do forever
     loop {
 
         // Get all the files in our input path
@@ -91,10 +95,9 @@ fn run(chunk_size: usize, job_slots: String, input_path: String)
         //let v: Vec<String> = files.map(|x| x.to_string()).collect();
 
         // 2. process chunks of input in parallel
-        //let chunksize = 50;
         let files = files_result.unwrap();
         let num_chunks = files.len() / chunk_size; // 2
-        let leftover  = files.len() % chunk_size; // 1
+        let leftover   = files.len() % chunk_size; // 1
         debug!("number of chunks {}", num_chunks);
         debug!("leftover {}", leftover);
 
