@@ -1,7 +1,8 @@
 use std::io::{Write};
 use std::io;
-use std::process::{Command, Stdio, Output};
-//use std::error::Error;
+use std::process::{Command, Stdio, Output, ExitStatus};
+use std::process;
+use std::error::Error;
 use structopt::StructOpt;
 use log::{debug};
 use std::fs;
@@ -41,7 +42,6 @@ struct Opt {
 /// Runs parallel instances of command with on item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
 fn parallelize(command: &str, input: Vec<String>) -> Output {
-
     let mut child = Command::new("parallel")
         .arg(command)
         .stdin(Stdio::piped())
@@ -57,6 +57,7 @@ fn parallelize(command: &str, input: Vec<String>) -> Output {
     return child.wait_with_output().expect("Failed to read stdout");
 }
 
+/// Return a vector of all the file paths in the given dir
 fn getFiles(dir: &Path) -> io::Result<()> {
     //let mut files: Vec<&Path> = vec![];
     if dir.is_dir() {
@@ -75,28 +76,14 @@ fn getFiles(dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn main() {
-
-    let opt = Opt::from_args();
-    if opt.debug {
-        std::env::set_var("RUST_LOG", "debug");
-    }
-
-    // By default we'll use -j 100% to run one job per CPU core
-    let mut job_slots = String::from("100%");
-    if ! opt.job_slots.is_none() {
-        job_slots = opt.job_slots.unwrap().to_string();
-    }
-
-    env_logger::init();
-
-    debug!("{:?}", opt);
-    debug!("job_slots = {}", job_slots);
+/// Do the thing
+fn run(chunk_size: String, job_slots: String, input_path: String)
+   -> Result<(),Box<dyn Error>> {
 
     loop {
 
         // Get all the files in our input path
-        let files = getFiles(Path::new(&opt.input_path));
+        let files = getFiles(Path::new(&input_path));
 
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
@@ -134,7 +121,31 @@ fn main() {
         }
         */
 
-        break;
+        return Ok(());
         // 3. Do any necessary postprocessing
+    }
+}
+
+/// Parse cli args and then do the thing
+fn main() {
+    let opt = Opt::from_args();
+    if opt.debug {
+        std::env::set_var("RUST_LOG", "debug");
+    }
+
+    // By default we'll use -j 100% to run one job per CPU core
+    let mut job_slots = String::from("100%");
+    if ! opt.job_slots.is_none() {
+        job_slots = opt.job_slots.unwrap().to_string();
+    }
+
+    env_logger::init();
+
+    debug!("{:?}", opt);
+    debug!("job_slots = {}", job_slots);
+
+    if let Err(e) = run(opt.chunk_size.to_string(), job_slots, opt.input_path) {
+        eprintln!("Oh noes! {}", e);
+        process::exit(1);
     }
 }
