@@ -81,7 +81,7 @@ fn get_files(dir: &Path) -> io::Result<Vec<String>> {
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
 /// TODO: Possibly sleep after processing each chunk?
-fn run(chunk_size: usize, job_slots: String, input_path: String)
+fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String)
    -> Result<(),Box<dyn Error>> {
 
     // Do forever
@@ -92,7 +92,6 @@ fn run(chunk_size: usize, job_slots: String, input_path: String)
 
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
-        //let v: Vec<String> = files.map(|x| x.to_string()).collect();
 
         // 2. process chunks of input in parallel
         let files = files_result.unwrap();
@@ -128,6 +127,8 @@ fn run(chunk_size: usize, job_slots: String, input_path: String)
 
         return Ok(());
         // 3. Do any necessary postprocessing
+
+        // TODO: sleep
     }
 }
 
@@ -149,7 +150,7 @@ fn main() {
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
-    if let Err(e) = run(opt.chunk_size, job_slots, opt.input_path) {
+    if let Err(e) = run(opt.chunk_size, job_slots, 0 as f64, opt.input_path) {
         eprintln!("Oh noes! {}", e);
         process::exit(1);
     }
