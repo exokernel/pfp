@@ -90,6 +90,7 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
         // Get all the files in our input path
         let mut files: Vec<String> = vec![];
         get_files(Path::new(&input_path), &mut files).unwrap();
+        files.sort();
 
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
