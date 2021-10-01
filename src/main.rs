@@ -5,8 +5,7 @@ use std::process;
 use std::error::Error;
 use structopt::StructOpt;
 use log::{debug};
-use std::fs::{self, DirEntry};
-//use std::fs;
+use std::fs;
 use std::path::{Path,PathBuf};
 
 #[derive(Debug, StructOpt)]
