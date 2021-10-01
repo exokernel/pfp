@@ -91,8 +91,6 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
         get_files(Path::new(&input_path), &mut files).unwrap();
         files.sort();
 
- 
-
         // 2. process chunks of input in parallel
         let num_chunks = files.len() / chunk_size; // 2
         let leftover   = files.len() % chunk_size; // 1
