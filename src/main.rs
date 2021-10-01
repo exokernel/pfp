@@ -92,8 +92,8 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
         files.sort();
 
         // 2. process chunks of input in parallel
-        let num_chunks = files.len() / chunk_size; // 2
-        let leftover   = files.len() % chunk_size; // 1
+        let num_chunks = files.len() / chunk_size;
+        let leftover   = files.len() % chunk_size;
         debug!("number of chunks {}", num_chunks);
         debug!("leftover {}", leftover);
 
