@@ -59,7 +59,7 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
     return child.wait_with_output().expect("Failed to read stdout");
 }
 
-/// Fill a vector of all the file paths in the given dir
+/// Fill a vector with all the file paths under the given dir (recursive)
 fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         // print info about each dir ent
