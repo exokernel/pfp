@@ -22,8 +22,8 @@ struct Opt {
     /// This is the number inputs that will be fed to a single invocation of
     /// Gnu Parallel. The actual number of parallel jobs per chunk is limited
     /// by job_slots.
-    #[structopt(short, long)]
-    chunk_size: Option<usize>,
+    #[structopt(short, long, default_value = "50")]
+    chunk_size: usize,
 
     /// Number of parallel job slots to use. Default to 1 slot per CPU core.
     #[structopt(short, long)]
@@ -58,7 +58,7 @@ fn parallelize(command: &str, input: Vec<String>) -> Output {
 }
 
 fn getFiles(dir: &Path) -> io::Result<()> {
-    let mut files: Vec<&Path> = vec![];
+    //let mut files: Vec<&Path> = vec![];
     if dir.is_dir() {
         // print info about each dir ent
         for e in fs::read_dir(dir)? {
@@ -68,6 +68,7 @@ fn getFiles(dir: &Path) -> io::Result<()> {
                 debug!("D {:?}", path);
             } else {
                 debug!("f {:?}", path);
+                //files.push(&path)
             }
         }
     }
@@ -81,9 +82,16 @@ fn main() {
         std::env::set_var("RUST_LOG", "debug");
     }
 
+    // By default we'll use -j 100% to run one job per CPU core
+    let mut job_slots = String::from("100%");
+    if ! opt.job_slots.is_none() {
+        job_slots = opt.job_slots.unwrap().to_string();
+    }
+
     env_logger::init();
 
     debug!("{:?}", opt);
+    debug!("job_slots = {}", job_slots);
 
     loop {
 
@@ -92,14 +100,14 @@ fn main() {
 
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
-        let v: Vec<String> = (0..101).map(|x| x.to_string()).collect();
+        //let v: Vec<String> = (0..101).map(|x| x.to_string()).collect();
 
         // 2. process chunks of input in parallel
-        let chunksize = 50;
-        let numchunks = v.len()/chunksize; // 2
-        let leftover = v.len() % chunksize; // 1
-        println!("number of chunks {}", numchunks);
-        println!("leftover {}", leftover);
+        //let chunksize = 50;
+        //let numchunks = v.len() / chunksize; // 2
+        //let leftover  = v.len() % chunksize; // 1
+        //println!("number of chunks {}", numchunks);
+        //println!("leftover {}", leftover);
 
         // ??? how to break input up into chunks
 
@@ -108,6 +116,7 @@ fn main() {
         // chunk 2:  [50..100] 50-99 50-things
         // chunk 3:  [100..101] 100 1-thing
 
+        /*
         for i in 0..numchunks {
             println!("chunk {}", i + 1);
             let index = chunksize*i;
@@ -123,6 +132,7 @@ fn main() {
             let output = parallelize("echo {#}-{%}-{}", chunk);
             println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
+        */
 
         break;
         // 3. Do any necessary postprocessing
