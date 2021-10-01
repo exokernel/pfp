@@ -92,7 +92,6 @@ fn print_entries(input_path: String) -> io::Result<()> {
 }
 
 /// Return a vector of all the file paths in the given dir
-/// TODO: process directories recursively building a list of files
 fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         // print info about each dir ent
