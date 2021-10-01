@@ -40,7 +40,7 @@ struct Opt {
 }
 
 /// Execute command in a subprocess using Gnu Parallel with given input
-/// Runs parallel instances of command with on item of input per instance
+/// Runs parallel instances of command with one item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
 fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
     debug!("parallelizing with {} job slots", job_slots);
@@ -59,39 +59,7 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
     return child.wait_with_output().expect("Failed to read stdout");
 }
 
-fn visit_dirs(dir: &Path, file_list: &mut Vec<String>) -> io::Result<()> {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                visit_dirs(&path, file_list)?;
-            } else {
-                //cb(&entry);
-                file_list.push(path.display().to_string());
-            }
-        }
-    }
-    Ok(())
-}
-
-fn print_entries(input_path: String) -> io::Result<()> {
-    let mut entries = fs::read_dir(input_path)?
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()?;
-
-    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-    // ordering is required the entries should be explicitly sorted.
-
-    entries.sort();
-    for e in entries {
-        println!("{}", e.display().to_string());
-    }
-
-    Ok(())
-}
-
-/// Return a vector of all the file paths in the given dir
+/// Fill a vector of all the file paths in the given dir
 fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         // print info about each dir ent
@@ -183,17 +151,6 @@ fn main() {
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
-    /*
-    //print_entries(opt.input_path).unwrap();
-    let mut flist: Vec<String> = vec![];
-    visit_dirs(Path::new(&opt.input_path), &mut flist).unwrap();
-
-    flist.sort();
-    for f in flist {
-        println!("{}", f);
-    }
-    return ();
-    */
     if let Err(e) = run(opt.chunk_size, job_slots, 0 as f64, opt.input_path) {
         eprintln!("Oh noes! {}", e);
         process::exit(1);
