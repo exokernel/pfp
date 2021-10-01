@@ -6,7 +6,7 @@ use std::process::{Command, Stdio, Output};
 /// Runs parallel instances of command with on item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
 fn parallelize(command: &str, input: Vec<String>) -> Output {
-    
+
     let mut child = Command::new("parallel")
         .arg(command)
         .stdin(Stdio::piped())
@@ -18,12 +18,12 @@ fn parallelize(command: &str, input: Vec<String>) -> Output {
     std::thread::spawn(move || {
         stdin.write_all(input.join("\n").as_bytes()).expect("Failed to write to stdin");
     });
-    
+
     return child.wait_with_output().expect("Failed to read stdout");
 }
 
 fn main() {
-    
+
     loop {
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
@@ -37,7 +37,7 @@ fn main() {
         println!("leftover {}", leftover);
 
         // ??? how to break input up into chunks
-  
+
         // Each chunk is a reference to slice of our Vec<String>:  &[String] &["foo", "bar",...,"baz"]
         // chunk 1:  [0..50] 0-49 50-things
         // chunk 2:  [50..100] 50-99 50-things
