@@ -138,7 +138,7 @@ fn main() {
 
     // By default we'll use -j 100% to run one job per CPU core
     let mut job_slots = String::from("100%");
-    if ! opt.job_slots.is_none() {
+    if opt.job_slots.is_some() {
         job_slots = opt.job_slots.unwrap().to_string();
     }
 
