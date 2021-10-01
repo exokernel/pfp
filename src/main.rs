@@ -1,6 +1,41 @@
 use std::io::{Write};
+use std::io;
 use std::process::{Command, Stdio, Output};
 //use std::error::Error;
+use structopt::StructOpt;
+use log::{debug};
+use std::fs;
+use std::path::Path;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "parallel-test", about = "Do some things in parallel")]
+struct Opt {
+    /// Activate debug mode
+    #[structopt(short, long)]
+    debug: bool,
+
+    /// Activate test mode
+    #[structopt(short, long)]
+    test: bool,
+
+    /// Number of things to try to do in parallel at one time.
+    /// This is the number inputs that will be fed to a single invocation of
+    /// Gnu Parallel. The actual number of parallel jobs per chunk is limited
+    /// by job_slots.
+    #[structopt(short, long)]
+    chunk_size: Option<usize>,
+
+    /// Number of parallel job slots to use. Default to 1 slot per CPU core.
+    #[structopt(short, long)]
+    job_slots: Option<usize>,
+
+    /// Shell command or script to run in parallel
+    #[structopt(short, long)]
+    script: Option<String>,
+
+    /// Directory to read files from
+    input_path: String,
+}
 
 /// Execute command in a subprocess using Gnu Parallel with given input
 /// Runs parallel instances of command with on item of input per instance
@@ -22,9 +57,39 @@ fn parallelize(command: &str, input: Vec<String>) -> Output {
     return child.wait_with_output().expect("Failed to read stdout");
 }
 
+fn getFiles(dir: &Path) -> io::Result<()> {
+    let mut files: Vec<&Path> = vec![];
+    if dir.is_dir() {
+        // print info about each dir ent
+        for e in fs::read_dir(dir)? {
+            let entry = e?;
+            let path = entry.path();
+            if path.is_dir() {
+                debug!("D {:?}", path);
+            } else {
+                debug!("f {:?}", path);
+            }
+        }
+    }
+    Ok(())
+}
+
 fn main() {
 
+    let opt = Opt::from_args();
+    if opt.debug {
+        std::env::set_var("RUST_LOG", "debug");
+    }
+
+    env_logger::init();
+
+    debug!("{:?}", opt);
+
     loop {
+
+        // Get all the files in our input path
+        let files = getFiles(Path::new(&opt.input_path));
+
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
         let v: Vec<String> = (0..101).map(|x| x.to_string()).collect();
