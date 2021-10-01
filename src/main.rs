@@ -5,7 +5,8 @@ use std::process;
 use std::error::Error;
 use structopt::StructOpt;
 use log::{debug};
-use std::fs;
+use std::fs::{self, DirEntry};
+//use std::fs;
 use std::path::{Path,PathBuf};
 
 #[derive(Debug, StructOpt)]
@@ -58,9 +59,41 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
     return child.wait_with_output().expect("Failed to read stdout");
 }
 
+fn visit_dirs(dir: &Path, file_list: &mut Vec<String>) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit_dirs(&path, file_list)?;
+            } else {
+                //cb(&entry);
+                file_list.push(path.display().to_string());
+            }
+        }
+    }
+    Ok(())
+}
+
+fn print_entries(input_path: String) -> io::Result<()> {
+    let mut entries = fs::read_dir(input_path)?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()?;
+
+    // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+    // ordering is required the entries should be explicitly sorted.
+
+    entries.sort();
+    for e in entries {
+        println!("{}", e.display().to_string());
+    }
+
+    Ok(())
+}
+
 /// Return a vector of all the file paths in the given dir
-fn get_files(dir: &Path) -> io::Result<Vec<String>> {
-    let mut files: Vec<String> = vec![];
+/// TODO: process directories recursively building a list of files
+fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         // print info about each dir ent
         for e in fs::read_dir(dir)? {
@@ -68,13 +101,14 @@ fn get_files(dir: &Path) -> io::Result<Vec<String>> {
             let path = entry.path();
             if path.is_dir() {
                 debug!("D {:?}", path);
+                get_files(&path, files).unwrap();
             } else {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
             }
         }
     }
-    Ok(files)
+    Ok(())
 }
 
 /// Do the thing forever unless interrupted.
@@ -88,13 +122,13 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
     loop {
 
         // Get all the files in our input path
-        let files_result = get_files(Path::new(&input_path));
+        let mut files: Vec<String> = vec![];
+        get_files(Path::new(&input_path), &mut files).unwrap();
 
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
 
         // 2. process chunks of input in parallel
-        let files = files_result.unwrap();
         let num_chunks = files.len() / chunk_size; // 2
         let leftover   = files.len() % chunk_size; // 1
         debug!("number of chunks {}", num_chunks);
@@ -128,7 +162,7 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
         return Ok(());
         // 3. Do any necessary postprocessing
 
-        // TODO: sleep
+        // TODO: sleep before looking in a path again
     }
 }
 
@@ -150,6 +184,17 @@ fn main() {
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
+    /*
+    //print_entries(opt.input_path).unwrap();
+    let mut flist: Vec<String> = vec![];
+    visit_dirs(Path::new(&opt.input_path), &mut flist).unwrap();
+
+    flist.sort();
+    for f in flist {
+        println!("{}", f);
+    }
+    return ();
+    */
     if let Err(e) = run(opt.chunk_size, job_slots, 0 as f64, opt.input_path) {
         eprintln!("Oh noes! {}", e);
         process::exit(1);
