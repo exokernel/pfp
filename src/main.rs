@@ -6,7 +6,7 @@ use std::error::Error;
 use structopt::StructOpt;
 use log::{debug};
 use std::fs;
-use std::path::Path;
+use std::path::{Path,PathBuf};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "parallel-test", about = "Do some things in parallel")]
@@ -41,7 +41,8 @@ struct Opt {
 /// Execute command in a subprocess using Gnu Parallel with given input
 /// Runs parallel instances of command with on item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
-fn parallelize(command: &str, input: Vec<String>) -> Output {
+fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
+    debug!("parallelizing with {} job slots", job_slots);
     let mut child = Command::new("parallel")
         .arg(command)
         .stdin(Stdio::piped())
@@ -58,8 +59,8 @@ fn parallelize(command: &str, input: Vec<String>) -> Output {
 }
 
 /// Return a vector of all the file paths in the given dir
-fn getFiles(dir: &Path) -> io::Result<()> {
-    //let mut files: Vec<&Path> = vec![];
+fn get_files(dir: &Path) -> io::Result<Vec<String>> {
+    let mut files: Vec<String> = vec![];
     if dir.is_dir() {
         // print info about each dir ent
         for e in fs::read_dir(dir)? {
@@ -69,32 +70,33 @@ fn getFiles(dir: &Path) -> io::Result<()> {
                 debug!("D {:?}", path);
             } else {
                 debug!("f {:?}", path);
-                //files.push(&path)
+                files.push(path.display().to_string());
             }
         }
     }
-    Ok(())
+    Ok(files)
 }
 
 /// Do the thing
-fn run(chunk_size: String, job_slots: String, input_path: String)
+fn run(chunk_size: usize, job_slots: String, input_path: String)
    -> Result<(),Box<dyn Error>> {
 
     loop {
 
         // Get all the files in our input path
-        let files = getFiles(Path::new(&input_path));
+        let files_result = get_files(Path::new(&input_path));
 
         // 1. get a whole set of input (e.g. names of all files in some directory)
         //    if there's no input sleep for a while and try again
-        //let v: Vec<String> = (0..101).map(|x| x.to_string()).collect();
+        //let v: Vec<String> = files.map(|x| x.to_string()).collect();
 
         // 2. process chunks of input in parallel
         //let chunksize = 50;
-        //let numchunks = v.len() / chunksize; // 2
-        //let leftover  = v.len() % chunksize; // 1
-        //println!("number of chunks {}", numchunks);
-        //println!("leftover {}", leftover);
+        let files = files_result.unwrap();
+        let num_chunks = files.len() / chunk_size; // 2
+        let leftover  = files.len() % chunk_size; // 1
+        debug!("number of chunks {}", num_chunks);
+        debug!("leftover {}", leftover);
 
         // ??? how to break input up into chunks
 
@@ -103,23 +105,23 @@ fn run(chunk_size: String, job_slots: String, input_path: String)
         // chunk 2:  [50..100] 50-99 50-things
         // chunk 3:  [100..101] 100 1-thing
 
-        /*
-        for i in 0..numchunks {
+        let slots = job_slots.as_str();
+
+        for i in 0..num_chunks {
             println!("chunk {}", i + 1);
-            let index = chunksize*i;
-            let chunk = (&v[index..(index+chunksize)]).to_vec();
-            let output = parallelize("echo {#}-{%}-{}", chunk);
+            let index = chunk_size*i;
+            let chunk = (&files[index..(index+chunk_size)]).to_vec();
+            let output = parallelize("echo {#}-{%}-{}", slots, chunk);
             println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
         // last chunk
         if leftover != 0 {
-            println!("chunk {}", numchunks + 1);
-            let index = chunksize*numchunks;
-            let chunk = (&v[index..(index+leftover)]).to_vec();
-            let output = parallelize("echo {#}-{%}-{}", chunk);
+            println!("chunk {}", num_chunks + 1);
+            let index = chunk_size*num_chunks;
+            let chunk = (&files[index..(index+leftover)]).to_vec();
+            let output = parallelize("echo {#}-{%}-{}", slots, chunk);
             println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
-        */
 
         return Ok(());
         // 3. Do any necessary postprocessing
@@ -144,7 +146,7 @@ fn main() {
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
-    if let Err(e) = run(opt.chunk_size.to_string(), job_slots, opt.input_path) {
+    if let Err(e) = run(opt.chunk_size, job_slots, opt.input_path) {
         eprintln!("Oh noes! {}", e);
         process::exit(1);
     }
