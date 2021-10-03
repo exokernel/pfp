@@ -1,12 +1,12 @@
 use std::io::{Write};
 use std::io;
-use std::process::{Command, Stdio, Output, ExitStatus};
+use std::process::{Command, Stdio, Output};
 use std::process;
 use std::error::Error;
 use structopt::StructOpt;
 use log::{debug};
 use std::fs;
-use std::path::{Path,PathBuf};
+use std::path::{Path};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "parallel-test", about = "Do some things in parallel")]
