@@ -88,10 +88,17 @@ fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
 /// TODO: Possibly sleep after processing each chunk?
-fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String)
+fn run(chunk_size: usize,
+       job_slots: String,
+       sleep_time: f64,
+       input_path: String,
+       script: Option<String>)
    -> Result<(),Box<dyn Error>> {
 
-    let command = String::from("echo {#}-{%}-{}");
+    let mut command = String::from("echo {#}-{%}-{}");
+    if script.is_some() {
+        command = script.unwrap();
+    }
 
     // Do forever
     loop {
@@ -157,7 +164,7 @@ fn main() {
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
-    if let Err(e) = run(opt.chunk_size, job_slots, 0 as f64, opt.input_path) {
+    if let Err(e) = run(opt.chunk_size, job_slots, 0 as f64, opt.input_path, opt.script) {
         eprintln!("Oh noes! {}", e);
         process::exit(1);
     }
