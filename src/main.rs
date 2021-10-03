@@ -42,9 +42,17 @@ struct Opt {
 /// Runs parallel instances of command with one item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
 fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
+ 
+    let mut parallel_args: Vec<String> = vec![];
+    if job_slots != "100%" {
+        parallel_args.push(format!("-j{}", job_slots));
+    }
+    parallel_args.push(command.to_owned());
+
     debug!("parallelizing with {} job slots", job_slots);
+    
     let mut child = Command::new("parallel")
-        .arg(command)
+        .args(parallel_args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -83,6 +91,8 @@ fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
 fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String)
    -> Result<(),Box<dyn Error>> {
 
+    let command = String::from("echo {#}-{%}-{}");
+
     // Do forever
     loop {
 
@@ -110,7 +120,7 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
             println!("chunk {}", i + 1);
             let index = chunk_size*i;
             let chunk = (&files[index..(index+chunk_size)]).to_vec();
-            let output = parallelize("echo {#}-{%}-{}", slots, chunk);
+            let output = parallelize(&command, slots, chunk);
             println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
         // last chunk
@@ -118,7 +128,7 @@ fn run(chunk_size: usize, job_slots: String, sleep_time: f64, input_path: String
             println!("chunk {}", num_chunks + 1);
             let index = chunk_size*num_chunks;
             let chunk = (&files[index..(index+leftover)]).to_vec();
-            let output = parallelize("echo {#}-{%}-{}", slots, chunk);
+            let output = parallelize(&command, slots, chunk);
             println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
 
