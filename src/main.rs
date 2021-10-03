@@ -95,6 +95,8 @@ fn run(chunk_size: usize,
        script: Option<String>)
    -> Result<(),Box<dyn Error>> {
 
+    let slots = job_slots.as_str();
+
     let mut command = String::from("echo {#}-{%}-{}");
     if script.is_some() {
         command = script.unwrap();
@@ -120,8 +122,6 @@ fn run(chunk_size: usize,
         // chunk 1:  [0..50] 0-49 50-things
         // chunk 2:  [50..100] 50-99 50-things
         // chunk 3:  [100..101] 100 1-thing
-
-        let slots = job_slots.as_str();
 
         for i in 0..num_chunks {
             println!("chunk {}", i + 1);
