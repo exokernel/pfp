@@ -19,9 +19,9 @@ struct Opt {
     #[structopt(short, long)]
     test: bool,
 
-    /// Process files once and exit
+    /// Process files in input path continuously
     #[structopt(long)]
-    once: bool,
+    daemon: bool,
 
     /// Number of things to try to do in parallel at one time.
     /// This is the number inputs that will be fed to a single invocation of
@@ -102,6 +102,7 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
 fn run(chunk_size: usize,
        job_slots: String,
        sleep_time: f64,
+       daemon: bool,
        input_path: String,
        script: Option<String>)
    -> Result<(),Box<dyn Error>> {
@@ -113,7 +114,8 @@ fn run(chunk_size: usize,
         command = script.unwrap();
     }
 
-    let extensions = vec!["mp4", "flv"];
+    //let extensions = vec!["mp4", "flv"];
+    let extensions = vec![];
 
     // Do forever
     loop {
@@ -154,9 +156,9 @@ fn run(chunk_size: usize,
 
         // 3. Do any necessary postprocessing
 
-        //if once {
-        return Ok(());
-        //}
+        if ! daemon {
+            return Ok(());
+        }
 
         // TODO: sleep before looking in a path again
     }
@@ -180,7 +182,11 @@ fn main() {
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
-    if let Err(e) = run(opt.chunk_size, job_slots, 0 as f64, opt.input_path, opt.script) {
+    if let Err(e) = run(opt.chunk_size,
+                        job_slots, 0 as f64,
+                        opt.daemon,
+                        opt.input_path,
+                        opt.script) {
         eprintln!("Oh noes! {}", e);
         process::exit(1);
     }
