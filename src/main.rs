@@ -72,6 +72,10 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
 
 /// Fill a vector with all the file paths under the given dir (recursive)
 /// that have the given extensions
+/// TODO: Would be better to pass a closure for adding files to the list
+/// Instead of checking if extensions is empty every iteration let the caller decide what determines
+/// if a file gets appended to the list. It could pass one closure that unconditionally adds files if
+/// the list of extensions is empty, otherwise a closure that checks the file against the extensions list
 fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         for e in fs::read_dir(dir)? {
