@@ -75,13 +75,12 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
             if path.is_dir() {
                 debug!("D {:?}", path);
                 get_files(&path, extensions, files).unwrap();
-            } else {
-                if path.extension().is_some() &&
-                   extensions.contains(&path.extension().unwrap()
-                                            .to_str().unwrap()) {
-                    debug!("f {:?}", path);
-                    files.push(path.display().to_string());
-                }
+            } else if
+              path.extension().is_some() &&
+              extensions.contains(&path.extension().unwrap()
+                                       .to_str().unwrap()) {
+                debug!("f {:?}", path);
+                files.push(path.display().to_string());
             }
         }
     }
