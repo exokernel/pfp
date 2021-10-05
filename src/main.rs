@@ -67,18 +67,18 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
 }
 
 /// Fill a vector with all the file paths under the given dir (recursive)
-fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
+fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         for e in fs::read_dir(dir)? {
             let entry = e?;
             let path = entry.path();
             if path.is_dir() {
                 debug!("D {:?}", path);
-                get_files(&path, files).unwrap();
+                get_files(&path, extensions, files).unwrap();
             } else {
                 if path.extension().is_some() &&
-                   (path.extension().unwrap() == "mp4" ||
-                    path.extension().unwrap() == "flv") {
+                   extensions.contains(&path.extension().unwrap()
+                                            .to_str().unwrap()) {
                     debug!("f {:?}", path);
                     files.push(path.display().to_string());
                 }
@@ -106,12 +106,14 @@ fn run(chunk_size: usize,
         command = script.unwrap();
     }
 
+    let extensions = vec!["mp4", "flv"];
+
     // Do forever
     loop {
 
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
-        get_files(Path::new(&input_path), &mut files).unwrap();
+        get_files(Path::new(&input_path), &extensions, &mut files).unwrap();
         files.sort();
 
         // 2. process chunks of input in parallel
