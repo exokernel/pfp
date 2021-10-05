@@ -67,6 +67,7 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
 }
 
 /// Fill a vector with all the file paths under the given dir (recursive)
+/// that have the given extensions
 fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         for e in fs::read_dir(dir)? {
