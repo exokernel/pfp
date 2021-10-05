@@ -42,7 +42,7 @@ struct Opt {
 /// Runs parallel instances of command with one item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
 fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
- 
+
     let mut parallel_args: Vec<String> = vec![];
     if job_slots != "100%" {
         parallel_args.push(format!("-j{}", job_slots));
@@ -50,7 +50,7 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
     parallel_args.push(command.to_owned());
 
     debug!("parallelizing with {} job slots", job_slots);
-    
+
     let mut child = Command::new("parallel")
         .args(parallel_args)
         .stdin(Stdio::piped())
@@ -76,8 +76,12 @@ fn get_files(dir: &Path, files: &mut Vec<String>) -> io::Result<()> {
                 debug!("D {:?}", path);
                 get_files(&path, files).unwrap();
             } else {
-                debug!("f {:?}", path);
-                files.push(path.display().to_string());
+                if path.extension().is_some() &&
+                   (path.extension().unwrap() == "mp4" ||
+                    path.extension().unwrap() == "flv") {
+                    debug!("f {:?}", path);
+                    files.push(path.display().to_string());
+                }
             }
         }
     }
