@@ -19,6 +19,10 @@ struct Opt {
     #[structopt(short, long)]
     test: bool,
 
+    /// Process files once and exit
+    #[structopt(long)]
+    once: bool,
+
     /// Number of things to try to do in parallel at one time.
     /// This is the number inputs that will be fed to a single invocation of
     /// Gnu Parallel. The actual number of parallel jobs per chunk is limited
@@ -76,6 +80,9 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
             if path.is_dir() {
                 debug!("D {:?}", path);
                 get_files(&path, extensions, files).unwrap();
+            } else if extensions.is_empty() {
+                debug!("f {:?}", path);
+                files.push(path.display().to_string());
             } else if
               path.extension().is_some() &&
               extensions.contains(&path.extension().unwrap()
@@ -145,8 +152,11 @@ fn run(chunk_size: usize,
             println!("{}",  String::from_utf8_lossy(&output.stdout));
         }
 
-        return Ok(());
         // 3. Do any necessary postprocessing
+
+        //if once {
+        return Ok(());
+        //}
 
         // TODO: sleep before looking in a path again
     }
