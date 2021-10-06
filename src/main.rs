@@ -23,6 +23,12 @@ struct Opt {
     #[structopt(long)]
     daemon: bool,
 
+    /// List of extensions delimited by commas. Only files ending in these extensions
+    /// will be processed. E.g. -e "mp4,flv"
+    /// If this option is not provided then all files under the input_path will be processed
+    #[structopt(short,long)]
+    extensions: Option<String>,
+
     /// Number of things to try to do in parallel at one time.
     /// This is the number inputs that will be fed to a single invocation of
     /// Gnu Parallel. The actual number of parallel jobs per chunk is limited
@@ -107,6 +113,7 @@ fn run(chunk_size: usize,
        job_slots: String,
        sleep_time: f64,
        daemon: bool,
+       extensions: Vec<&str>,
        input_path: String,
        script: Option<String>)
    -> Result<(),Box<dyn Error>> {
@@ -117,9 +124,6 @@ fn run(chunk_size: usize,
     if script.is_some() {
         command = script.unwrap();
     }
-
-    //let extensions = vec!["mp4", "flv"];
-    let extensions = vec![];
 
     // Do forever
     loop {
@@ -181,6 +185,15 @@ fn main() {
         job_slots = opt.job_slots.unwrap().to_string();
     }
 
+    let ext_string: String;
+    let ext_vec: Vec<&str>;
+    if opt.extensions.is_some() {
+        ext_string = opt.extensions.clone().unwrap();
+        ext_vec = ext_string.as_str().split(",").collect();
+    } else {
+        ext_vec = vec![];
+    }
+
     env_logger::init();
 
     debug!("{:?}", opt);
@@ -189,6 +202,7 @@ fn main() {
     if let Err(e) = run(opt.chunk_size,
                         job_slots, 0 as f64,
                         opt.daemon,
+                        ext_vec,
                         opt.input_path,
                         opt.script) {
         eprintln!("Oh noes! {}", e);
