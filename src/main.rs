@@ -142,7 +142,6 @@ fn run(chunk_size: usize,
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
         get_files(Path::new(&input_path), &extensions, &mut files).unwrap();
-        files.sort();
 
         // 2. process chunks of input in parallel
         let num_chunks = files.len() / chunk_size;
