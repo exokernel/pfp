@@ -105,6 +105,17 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
     Ok(())
 }
 
+fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &String, files: &Vec<String>) {
+    println!("chunk {}", chunk_num + 1);
+    let index = chunk_size*chunk_num;
+    let chunk = (&files[index..(index+chunk_size)]).to_vec();
+    let output = parallelize(&command, slots, chunk);
+    println!("{}", String::from_utf8_lossy(&output.stdout));
+    if ! output.stderr.is_empty() {
+        eprintln!("{} ERROR: {}", command, String::from_utf8_lossy(&output.stderr));
+    }
+}
+
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
@@ -147,19 +158,11 @@ fn run(chunk_size: usize,
         // chunk 3:  [100..101] 100 1-thing
 
         for i in 0..num_chunks {
-            println!("chunk {}", i + 1);
-            let index = chunk_size*i;
-            let chunk = (&files[index..(index+chunk_size)]).to_vec();
-            let output = parallelize(&command, slots, chunk);
-            println!("{}",  String::from_utf8_lossy(&output.stdout));
+            process_chunk(i, chunk_size, slots, &command, &files)
         }
         // last chunk
         if leftover != 0 {
-            println!("chunk {}", num_chunks + 1);
-            let index = chunk_size*num_chunks;
-            let chunk = (&files[index..(index+leftover)]).to_vec();
-            let output = parallelize(&command, slots, chunk);
-            println!("{}",  String::from_utf8_lossy(&output.stdout));
+            process_chunk(num_chunks - 1, leftover, slots, &command, &files)
         }
 
         // 3. Do any necessary postprocessing
