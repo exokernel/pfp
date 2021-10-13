@@ -110,6 +110,8 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
     Ok(())
 }
 
+/// Process a single chunk of input in parallel
+/// Runs chunk_size instances of command via Gnu Parallel each with a single file from the chunk as argument
 fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &String, files: &Vec<String>) {
     println!("chunk {}", chunk_num + 1);
     let index = chunk_size*chunk_num;
