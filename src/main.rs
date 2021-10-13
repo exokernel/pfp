@@ -15,9 +15,9 @@ struct Opt {
     #[structopt(short, long)]
     debug: bool,
 
-    /// Activate test mode
-    #[structopt(short, long)]
-    test: bool,
+    // Activate test mode
+    //#[structopt(short, long)]
+    //test: bool,
 
     /// Process files in input path continuously
     #[structopt(long)]
@@ -39,6 +39,11 @@ struct Opt {
     /// Number of parallel job slots to use. Default to 1 slot per CPU core.
     #[structopt(short, long)]
     job_slots: Option<usize>,
+
+    /// Seconds to sleep before processing all files in input_path again.
+    /// Only used if --daemon is specified
+    #[structopt(short="t", long="sleep-time", default_value="5")]
+    sleep_time: u64,
 
     /// Shell command or script to run in parallel
     #[structopt(short, long)]
@@ -122,7 +127,7 @@ fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &Str
 /// TODO: Possibly sleep after processing each chunk?
 fn run(chunk_size: usize,
        job_slots: String,
-       sleep_time: f64,
+       sleep_time: u64,
        daemon: bool,
        extensions: Vec<&str>,
        input_path: String,
@@ -156,12 +161,12 @@ fn run(chunk_size: usize,
         // chunk 2:  [50..100] 50-99 50-things
         // chunk 3:  [100..101] 100 1-thing
 
-        for i in 0..num_chunks {
-            process_chunk(i, chunk_size, slots, &command, &files)
+        for n in 0..num_chunks {
+            process_chunk(n, chunk_size, slots, &command, &files)
         }
         // last chunk
         if leftover != 0 {
-            process_chunk(num_chunks - 1, leftover, slots, &command, &files)
+            process_chunk(num_chunks, leftover, slots, &command, &files)
         }
 
         // 3. Do any necessary postprocessing
@@ -170,7 +175,8 @@ fn run(chunk_size: usize,
             return Ok(());
         }
 
-        // TODO: sleep before looking in a path again
+        debug!("Finished processing all files in input-path. Sleeping for {} seconds...", sleep_time);
+        std::thread::sleep(std::time::Duration::from_secs(sleep_time));
     }
 }
 
@@ -202,7 +208,8 @@ fn main() {
     debug!("job_slots = {}", job_slots);
 
     if let Err(e) = run(opt.chunk_size,
-                        job_slots, 0 as f64,
+                        job_slots,
+                        opt.sleep_time,
                         opt.daemon,
                         ext_vec,
                         opt.input_path,
