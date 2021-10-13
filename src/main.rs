@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path};
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "pfp", about = "Parallel File Processor")]
+#[structopt(name = "pfp", about = "Parallel File Processor", author="dustinc@flyingcroc.net")]
 struct Opt {
     /// Activate debug mode
     #[structopt(short, long)]
@@ -148,6 +148,8 @@ fn run(chunk_size: usize,
     // Do forever
     loop {
 
+        println!("PFP LOOP START");
+
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
         get_files(Path::new(&input_path), &extensions, &mut files)?;
@@ -174,6 +176,7 @@ fn run(chunk_size: usize,
         }
 
         // 3. Do any necessary postprocessing
+        //println!("PFP LOOP END");
 
         if ! daemon {
             return Ok(());
