@@ -1,5 +1,5 @@
 [package]
-name = "parallel-test"
+name = "pfp"
 version = "0.1.0"
 authors = ["Dustin Cannon <dustin@shunyata.space>"]
 edition = "2018"

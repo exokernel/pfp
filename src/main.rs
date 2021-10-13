@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path};
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "parallel-test", about = "Do some things in parallel")]
+#[structopt(name = "pfp", about = "Parallel File Processor")]
 struct Opt {
     /// Activate debug mode
     #[structopt(short, long)]
