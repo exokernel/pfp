@@ -94,7 +94,7 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
             let path = entry.path();
             if path.is_dir() {
                 debug!("D {:?}", path);
-                get_files(&path, extensions, files).unwrap();
+                get_files(&path, extensions, files)?;
             } else if extensions.is_empty() {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
@@ -150,7 +150,7 @@ fn run(chunk_size: usize,
 
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
-        get_files(Path::new(&input_path), &extensions, &mut files).unwrap();
+        get_files(Path::new(&input_path), &extensions, &mut files)?;
 
         // 2. process chunks of input in parallel
         let num_chunks = files.len() / chunk_size;
