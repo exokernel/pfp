@@ -112,7 +112,7 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
 
 /// Process a single chunk of input in parallel
 /// Runs chunk_size instances of command via Gnu Parallel each with a single file from the chunk as argument
-/// The number of parallel jobs use for the chunk is determined by the slots argument, which specifies the
+/// The number of parallel jobs used for the chunk is determined by the slots argument, which specifies the
 /// number of job slots for Gnu Parallel to use
 fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &String, files: &Vec<String>) {
     println!("chunk {}", chunk_num + 1);
