@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path};
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "pfp", about = "Parallel File Processor", author="dustinc@flyingcroc.net")]
+#[structopt(name = "pfp", about = "Parallel File Processor")]
 struct Opt {
     /// Activate debug mode
     #[structopt(short, long)]
