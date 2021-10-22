@@ -14,11 +14,13 @@ write_to_db() {
 
     echo writing info for $f to the database
     # dbhost, database, user, pass in ~/.my.cnf under [client_test]
-    mysql --defaults-group-suffix=_test -e "$dbinsert" || (echo failed to write to database; exit 1)
+    mysql --defaults-group-suffix=_test -e "$dbinsert" || (echo failed to write to database && return 1)
 }
 
 cleanup() {
     f=$1
+    echo cleaningup lockfile for $f
+    rm $f.lock
     echo would remove $f
     # Don't actually remove it until we're ready for prime time
     #rm $1
@@ -30,6 +32,10 @@ directory=$(dirname $path)
 
 # WARNING: Big assumption here! We are passed a path that looks like /data/aws/YYYY-mm-dd/filename
 prefix="/data/aws/"
+#if [[ $path != $prefix* ]]; then
+#    echo "$path must start with $prefix"
+#    exit 1
+#fi
 datedir=${directory#$prefix} # get rid of prefix, leaving only the date portion
 year=${datedir%-*-*}
 month=$(echo $datedir | sed -r 's/[0-9]{4}-([0-9]{2})-[0-9]{2}/\1/')
@@ -44,6 +50,13 @@ month=$(echo $datedir | sed -r 's/[0-9]{4}-([0-9]{2})-[0-9]{2}/\1/')
 
 # work out of the same directory as the file
 cd $directory
+
+# Create a lockfile before starting the upload pipeline.
+# If the lockfile for this file already exists then we bail.
+# The lockfile is only cleaned up after a successful upload and db insert.
+# This keeps us from retrying any failed uploads
+test -f $file.lock && echo lockfile for $file already exists && exit 1
+touch $file.lock
 
 # Log start
 starttime="$(date "+%Y-%m-%d %T")"
@@ -63,7 +76,7 @@ aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/$file.tgz.crypt)\
 && cleanup $file
 
 # cleanup the md5 regardless
-test -f $file.md5 && rm $file.md5
+test -f $file.md5 && (echo cleaning up $file.md5; rm $file.md5)
 
 # Log end
 endtime="$(date "+%Y-%m-%d %T")"
