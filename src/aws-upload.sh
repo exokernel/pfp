@@ -4,6 +4,12 @@ S3BUCKET="s3doj"
 S3FOLDER="upload-test"
 DBTABLE="files"
 
+bail() {
+    msg=$1
+    echo "$msg"
+    exit 1
+}
+
 write_to_db() {
     fullpath=$1
     filename=$(basename $fullpath)
@@ -55,7 +61,7 @@ cd $directory
 # If the lockfile for this file already exists then we bail.
 # The lockfile is only cleaned up after a successful upload and db insert.
 # This keeps us from retrying any failed uploads
-test -f $file.lock && echo lockfile for $file already exists && exit 1
+test -f $file.lock && bail "lockfile for $file already exists"
 touch $file.lock
 
 # Log start
