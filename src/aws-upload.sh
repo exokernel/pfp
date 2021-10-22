@@ -18,7 +18,7 @@ write_to_db() {
     dbinsert="INSERT INTO $DBTABLE (host, filename, fullpath, directory, upload_finished) VALUES\
              (\"$(hostname -f)\", \"$filename\", \"$fullpath\", \"$directory\", NOW())"
 
-    echo writing info for $f to the database
+    echo writing info for $filename to the database
     # dbhost, database, user, pass in ~/.my.cnf under [client_test]
     mysql --defaults-group-suffix=_test -e "$dbinsert" || (echo failed to write to database && return 1)
 }
