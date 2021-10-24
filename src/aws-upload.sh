@@ -6,8 +6,13 @@ DBTABLE="files"
 
 bail() {
     msg=$1
-    echo "$msg"
+    >&2 tsecho "$msg"
     exit 1
+}
+
+tsecho() {
+    message=$1
+    echo "$(date "+%Y-%m-%d %T"): $message"
 }
 
 write_to_db() {
@@ -65,8 +70,8 @@ test -f $file.lock && bail "lockfile for $file already exists"
 touch $file.lock
 
 # Log start
-starttime="$(date "+%Y-%m-%d %T")"
-echo "$starttime: START FILE: $file"
+#starttime="$(date "+%Y-%m-%d %T")"
+tsecho "START FILE: $file"
 
 # create a file with our md5 checksum
 md5sum $file > $file.md5
@@ -85,27 +90,8 @@ aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/$file.tgz.crypt)\
 test -f $file.md5 && (echo cleaning up $file.md5; rm $file.md5)
 
 # Log end
-endtime="$(date "+%Y-%m-%d %T")"
-echo "$endtime: END FILE: $file"
-
-#------------------------------------
-# Some Notes
-#------------------------------------
-
-#tar -cvz -f - $file $file.md5
-
-# gpg:
-# echo 'plaintext' | gpg -c -o -
-# /usr/bin/gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r something
-
-# aws:
-# echo "hello world" | aws s3 cp - s3://some-bucket/hello.txt
-# ^^^^
-#if DEEPARCHIVE:
-#aws_string = '/usr/local/bin/aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE '+encrypted_file_path+' s3://some-bucket/'+file_year+'/'+file_month+'/'
-#else:
-#aws_string = '/usr/bin/mtglacier --config /root/.aws/glacier.cfg --journal "/var/log/glacier/'+ymd+'.log" --vault "' \
-#+VAULT+'" --dir '+LOCAL_DIR+' --filename ' + encrypted_file_path + ' --concurrency 30 upload-file'
+#endtime="$(date "+%Y-%m-%d %T")"
+tsecho "END FILE: $file"
 
 #CREATE TABLE `files` (
 #  `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -117,4 +103,4 @@ echo "$endtime: END FILE: $file"
 #  PRIMARY KEY (`id`),
 #  UNIQUE KEY `filename` (`filename`),
 #  KEY `host` (`host`)
-#) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4
+#) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
