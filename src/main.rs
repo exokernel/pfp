@@ -7,6 +7,7 @@ use structopt::StructOpt;
 use log::{debug};
 use std::fs;
 use std::path::{Path};
+use chrono::prelude::*;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "pfp", about = "Parallel File Processor")]
@@ -51,6 +52,34 @@ struct Opt {
 
     /// Directory to read files from
     input_path: String,
+}
+
+enum Fd {
+    StdOut,
+    StdErr,
+}
+
+/// Print to stdout w timestamp
+fn print(message: &str) {
+   tp(message, Fd::StdOut);
+}
+
+/// Print to stderr w timestamp
+fn eprint(message: &str) {
+    tp(message, Fd::StdErr);
+}
+
+/// Print with timestamp
+fn tp(message: &str, fd: Fd) {
+    let local: DateTime<Local> = Local::now();
+    match fd {
+        Fd::StdOut => {
+            println!("{}: {}", local.to_string(), message);
+        },
+        Fd::StdErr => {
+            eprintln!("{}: {}", local.to_string(), message);
+        }
+    }
 }
 
 /// Execute command in a subprocess using Gnu Parallel with given input
@@ -140,7 +169,7 @@ fn run(chunk_size: usize,
 
     let slots = job_slots.as_str();
 
-    let mut command = String::from("echo {#}-{%}-{}");
+    let mut command = String::from("echo $(date) {#}-{%}-{}");
     if script.is_some() {
         command = script.unwrap();
     }

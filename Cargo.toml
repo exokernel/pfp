@@ -13,4 +13,7 @@ structopt = "0.3"
 
 # logging
 log = "0.4"
-env_logger = "0.8"
+env_logger = "0.9"
+
+# time
+chrono = "0.4"
