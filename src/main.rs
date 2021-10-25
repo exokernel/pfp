@@ -1,6 +1,6 @@
 use std::io::{Write};
 use std::io;
-use std::process::{Command, Stdio, Output};
+use std::process::{Command, Stdio};
 use std::process;
 use std::error::Error;
 use structopt::StructOpt;
@@ -85,7 +85,9 @@ fn tp(message: &str, fd: Fd) {
 /// Execute command in a subprocess using Gnu Parallel with given input
 /// Runs parallel instances of command with one item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
-fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
+//fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
+fn parallelize(command: &str, job_slots: &str, input: Vec<String>)
+   -> Result<(), Box<dyn Error>> {
 
     let mut parallel_args: Vec<String> = vec![];
     if job_slots != "100%" {
@@ -98,16 +100,19 @@ fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
     let mut child = Command::new("parallel")
         .args(parallel_args)
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("failed to execute");
+        //.stdout(Stdio::piped())
+        .spawn()?;
+        //.expect("failed to execute");
 
-    let mut stdin = child.stdin.take().expect("Failed to open stdin");
+    let mut stdin = child.stdin.take().ok_or("Failed to open stdin")?;
     std::thread::spawn(move || {
         stdin.write_all(input.join("\n").as_bytes()).expect("Failed to write to stdin");
     });
 
-    return child.wait_with_output().expect("Failed to read stdout");
+    //return child.wait_with_output().expect("Failed to read stdout");
+    child.wait()?;
+
+    Ok(())
 }
 
 /// Fill a vector with all the file paths under the given dir (recursive)
@@ -143,15 +148,19 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
 /// Runs chunk_size instances of command via Gnu Parallel each with a single file from the chunk as argument
 /// The number of parallel jobs used for the chunk is determined by the slots argument, which specifies the
 /// number of job slots for Gnu Parallel to use
-fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &String, files: &Vec<String>) {
-    println!("chunk {}", chunk_num + 1);
+fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &String, files: &Vec<String>) 
+   -> Result<(), Box<dyn Error>>{
+    debug!("chunk {} ({}): START", chunk_num + 1, chunk_size);
     let index = chunk_size*chunk_num;
     let chunk = (&files[index..(index+chunk_size)]).to_vec();
-    let output = parallelize(&command, slots, chunk);
-    println!("{}", String::from_utf8_lossy(&output.stdout));
-    if ! output.stderr.is_empty() {
-        eprintln!("{} ERROR: {}", command, String::from_utf8_lossy(&output.stderr));
-    }
+    //let output = parallelize(&command, slots, chunk);
+    parallelize(&command, slots, chunk)?;
+    //print!("{}", String::from_utf8_lossy(&output.stdout));
+    //if ! output.stderr.is_empty() {
+    //    eprintln!("{} ERROR: {}", command, String::from_utf8_lossy(&output.stderr));
+    //}
+    debug!("chunk {} ({}): DONE", chunk_num + 1, chunk_size);
+    Ok(())
 }
 
 /// Do the thing forever unless interrupted.
@@ -177,7 +186,7 @@ fn run(chunk_size: usize,
     // Do forever
     loop {
 
-        println!("PFP LOOP START");
+        print(format!("PFP LOOP START").as_str());
 
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
@@ -197,15 +206,14 @@ fn run(chunk_size: usize,
         // chunk 3:  [100..101] 100 1-thing
 
         for n in 0..num_chunks {
-            process_chunk(n, chunk_size, slots, &command, &files)
+            process_chunk(n, chunk_size, slots, &command, &files)?;
         }
         // last chunk
         if leftover != 0 {
-            process_chunk(num_chunks, leftover, slots, &command, &files)
+            process_chunk(num_chunks, leftover, slots, &command, &files)?;
         }
 
         // 3. Do any necessary postprocessing
-        //println!("PFP LOOP END");
 
         if ! daemon {
             return Ok(());
@@ -250,7 +258,7 @@ fn main() {
                         ext_vec,
                         opt.input_path,
                         opt.script) {
-        eprintln!("Oh noes! {}", e);
+        eprint(format!("Oh noes! {}", e).as_str());
         process::exit(1);
     }
 }
