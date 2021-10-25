@@ -71,7 +71,6 @@ test -f "$file".lock && bail "lockfile for $file already exists"
 touch "$file".lock
 
 # Log start
-#starttime="$(date "+%Y-%m-%d %T")"
 tsecho "START FILE: $file"
 
 # create a file with our md5 checksum
@@ -80,19 +79,20 @@ md5sum "$file" > "$file".md5
 # tarball-encrypt-upload pipeline
 # if we successfully upload a file then we write a record to the database
 # and then remove the original file
+starttime_ms="$(date "+%s%3N")"
 (tar -cz -f - "$file".md5 "$file" |\
 gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r 1539150C -o - |\
 #aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S3FOLDER/$file.tgz.crypt)\
 aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$fn_noext")\
-&& write_to_db "$path"\
+&& endtime_ms="$(date "+%s%3N")" && write_to_db "$path"\
 && cleanup "$file"
 
 # cleanup the md5 regardless
 test -f "$file".md5 && (tsecho "cleaning up $file.md5"; rm "$file".md5)
 
 # Log end
-#endtime="$(date "+%Y-%m-%d %T")"
-tsecho "END FILE: $file"
+duration_ms=$(($endtime_ms - $starttime_ms))
+tsecho "END FILE: $file DURATION: ${duration_ms}ms"
 
 #CREATE TABLE `files` (
 #  `id` int(11) NOT NULL AUTO_INCREMENT,
