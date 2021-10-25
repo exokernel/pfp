@@ -39,6 +39,7 @@ cleanup() {
 
 path=$1
 file=$(basename "$path")
+fn_noext=${file%.*}
 directory=$(dirname "$path")
 
 # WARNING: Big assumption here! We are passed a path that looks like /data/aws/YYYY-mm-dd/filename
@@ -82,7 +83,7 @@ md5sum "$file" > "$file".md5
 (tar -cz -f - "$file".md5 "$file" |\
 gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r 1539150C -o - |\
 #aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S3FOLDER/$file.tgz.crypt)\
-aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$file".tgz.crypt)\
+aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$fn_noext")\
 && write_to_db "$path"\
 && cleanup "$file"
 
