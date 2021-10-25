@@ -246,7 +246,7 @@ fn main() {
         ext_vec = vec![];
     }
 
-    env_logger::init();
+    env_logger::builder().target(env_logger::Target::Stdout).init();
 
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
