@@ -40,6 +40,7 @@ cleanup() {
 path=$1
 file=$(basename "$path")
 fn_noext=${file%.*}
+fn_noext=${fn_noext#show_}
 directory=$(dirname "$path")
 
 # WARNING: Big assumption here! We are passed a path that looks like /data/aws/YYYY-mm-dd/filename
