@@ -87,7 +87,7 @@ aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$file".tgz.crypt)\
 && cleanup "$file"
 
 # cleanup the md5 regardless
-test -f "$file".md5 && (echo cleaning up "$file".md5; rm "$file".md5)
+test -f "$file".md5 && (tsecho "cleaning up $file.md5"; rm "$file".md5)
 
 # Log end
 #endtime="$(date "+%Y-%m-%d %T")"
