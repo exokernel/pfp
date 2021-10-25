@@ -25,7 +25,7 @@ write_to_db() {
 
     tsecho "writing info for $filename to the database"
     # dbhost, database, user, pass in ~/.my.cnf under [client_test]
-    mysql --defaults-group-suffix=_test -e "$dbinsert" || (echo failed to write to database && return 1)
+    mysql --defaults-group-suffix=_test -e "$dbinsert" || (>&2 tsecho "failed to write to database" && return 1)
 }
 
 cleanup() {
@@ -79,7 +79,7 @@ md5sum "$file" > "$file".md5
 # tarball-encrypt-upload pipeline
 # if we successfully upload a file then we write a record to the database
 # and then remove the original file
-(tar -cvz -f - "$file".md5 "$file" |\
+(tar -cz -f - "$file".md5 "$file" |\
 gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r 1539150C -o - |\
 #aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S3FOLDER/$file.tgz.crypt)\
 aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$file".tgz.crypt)\
