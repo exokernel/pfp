@@ -79,7 +79,7 @@ touch "$file".lock
 tsecho "START FILE: $file"
 
 # create a file with our md5 checksum
-md5sum "$file" > "$file".md5
+md5sum "$file" > "$file".md5 || bail "failed to create md5 file for $file"
 
 # tarball-encrypt-upload pipeline
 # if we successfully upload a file then we write a record to the database
