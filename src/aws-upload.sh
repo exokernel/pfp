@@ -39,6 +39,8 @@ cleanup() {
 }
 
 path=$1
+test -f "$path" || bail "no such file: $path"
+
 file=$(basename "$path")
 fn_noext=${file%.*}
 fn_noext=${fn_noext#show_}
