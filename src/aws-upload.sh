@@ -6,7 +6,8 @@ DBTABLE="files"
 
 bail() {
     msg=$1
-    >&2 tsecho "$msg"
+    #>&2 tsecho "$msg"
+    tsecho "$msg"
     exit 1
 }
 
@@ -25,7 +26,8 @@ write_to_db() {
 
     tsecho "writing info for $filename to the database"
     # dbhost, database, user, pass in ~/.my.cnf under [client_test]
-    mysql --defaults-group-suffix=_test -e "$dbinsert" || (>&2 tsecho "failed to write to database" && return 1)
+    #mysql --defaults-group-suffix=_test -e "$dbinsert" || (>&2 tsecho "failed to write to database" && return 1)
+    mysql --defaults-group-suffix=_test -e "$dbinsert" || (tsecho "failed to write to database" && return 1)
 }
 
 cleanup() {
