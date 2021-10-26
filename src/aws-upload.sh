@@ -32,9 +32,10 @@ cleanup() {
     f=$1
     tsecho "cleaning up lockfile for $f"
     rm "$f".lock
-    tsecho "would remove $f"
     # Don't actually remove it until we're ready for prime time
-    #rm $1
+    #tsecho "would remove $f"
+    tsecho "removing $f"
+    rm "$f"
 }
 
 path=$1
@@ -45,20 +46,23 @@ directory=$(dirname "$path")
 
 # WARNING: Big assumption here! We are passed a path that looks like /data/aws/YYYY-mm-dd/filename
 prefix="/data/aws/"
-#if [[ $path != $prefix* ]]; then
-#    echo "$path must start with $prefix"
-#    exit 1
-#fi
+if [[ $path != $prefix* ]]; then
+    echo "$path must start with $prefix"
+    exit 1
+fi
 datedir=${directory#$prefix} # get rid of prefix, leaving only the date portion
 year=${datedir%-*-*}
 month=$(echo $datedir | sed -r 's/[0-9]{4}-([0-9]{2})-[0-9]{2}/\1/')
+S3FOLDER="$year/$month"
 
 #echo path $1
 #echo file $file
+#echo fn $fn_noext
 #echo directory $directory
 #echo datedir $datedir
 #echo year $year
 #echo month $month
+#echo s3folder $S3FOLDER
 #exit
 
 # work out of the same directory as the file
@@ -83,8 +87,8 @@ md5sum "$file" > "$file".md5
 starttime_ms="$(date "+%s%3N")"
 (tar -cz -f - "$file".md5 "$file" |\
 gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r 1539150C -o - |\
-#aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S3FOLDER/$file.tgz.crypt)\
-aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$fn_noext")\
+#aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$fn_noext".test)\
+aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S3FOLDER/"$fn_noext")\
 && endtime_ms="$(date "+%s%3N")" && write_to_db "$path"\
 && cleanup "$file"
 
