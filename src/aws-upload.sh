@@ -30,12 +30,12 @@ write_to_db() {
 
 cleanup() {
     f=$1
-    tsecho "cleaning up lockfile for $f"
-    rm "$f".lock
     # Don't actually remove it until we're ready for prime time
     #tsecho "would remove $f"
     tsecho "removing $f"
     rm "$f"
+    tsecho "cleaning up lockfile for $f"
+    rm "$f".lock
 }
 
 path=$1
