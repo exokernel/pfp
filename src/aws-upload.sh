@@ -30,12 +30,12 @@ write_to_db() {
 
 cleanup() {
     f=$1
-    tsecho "cleaning up lockfile for $f"
-    rm "$f".lock
     # Don't actually remove it until we're ready for prime time
     #tsecho "would remove $f"
     tsecho "removing $f"
     rm "$f"
+    tsecho "cleaning up lockfile for $f"
+    rm "$f".lock
 }
 
 path=$1
@@ -69,6 +69,8 @@ S3FOLDER="$year/$month"
 
 # work out of the same directory as the file
 cd "$directory" || bail "failed to chdir to $directory"
+
+aws s3 ls --profile deeparchive s3://"$S3BUCKET"/"$S3FOLDER"/"$fn_noext" >/dev/null && bail "$file already exists in s3 bucket"
 
 # Create a lockfile before starting the upload pipeline.
 # If the lockfile for this file already exists then we bail.
