@@ -149,7 +149,7 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
 /// The number of parallel jobs used for the chunk is determined by the slots argument, which specifies the
 /// number of job slots for Gnu Parallel to use
 fn process_chunk(chunk_num: usize, chunk_size: usize, leftover: usize, slots: &str, command: &String, files: &Vec<String>) 
-   -> Result<(), Box<dyn Error>>{
+   -> Result<(), Box<dyn Error>> {
     debug!("chunk {} ({}): START", chunk_num + 1, chunk_size);
     let index = chunk_size*chunk_num;
     let chunk;
