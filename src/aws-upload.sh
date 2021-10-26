@@ -54,7 +54,7 @@ if [[ $path != $prefix* ]]; then
 fi
 datedir=${directory#$prefix} # get rid of prefix, leaving only the date portion
 year=${datedir%-*-*}
-month=$(echo $datedir | sed -r 's/[0-9]{4}-([0-9]{2})-[0-9]{2}/\1/')
+month=$(echo "$datedir" | sed -r 's/[0-9]{4}-([0-9]{2})-[0-9]{2}/\1/')
 S3FOLDER="$year/$month"
 
 #echo path $1
@@ -91,7 +91,7 @@ starttime_ms="$(date "+%s%3N")"
 endtime_ms=$starttime_ms
 tar -cz -f - "$file".md5 "$file" |\
 gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r 1539150C -o - |\
-aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S3FOLDER/"$fn_noext"\
+aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/"$S3FOLDER"/"$fn_noext"\
 && endtime_ms="$(date "+%s%3N")" && write_to_db "$path"\
 && cleanup "$file"
 
@@ -99,7 +99,7 @@ aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/$S
 test -f "$file".md5 && (tsecho "cleaning up $file.md5"; rm "$file".md5)
 
 # Log end
-duration_ms=$(($endtime_ms - $starttime_ms))
+duration_ms=$((endtime_ms - starttime_ms))
 tsecho "END FILE: $file DURATION: ${duration_ms}ms"
 
 #CREATE TABLE `files` (
