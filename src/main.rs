@@ -154,6 +154,10 @@ fn process_chunk(chunk_num: usize, chunk_size: usize, slots: &str, command: &Str
     let index = chunk_size*chunk_num;
     let chunk = (&files[index..(index+chunk_size)]).to_vec();
     //let output = parallelize(&command, slots, chunk);
+    debug!("chunk num {} size {}", chunk_num, chunk_size);
+    for f in chunk.iter() {
+        debug!("f: {}", f);
+    }
     parallelize(&command, slots, chunk)?;
     //print!("{}", String::from_utf8_lossy(&output.stdout));
     //if ! output.stderr.is_empty() {
@@ -190,6 +194,9 @@ fn run(chunk_size: usize,
 
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
+        if ! files.is_empty() {
+            panic!("files is not empty");
+        }
         get_files(Path::new(&input_path), &extensions, &mut files)?;
 
         // 2. process chunks of input in parallel
