@@ -70,6 +70,8 @@ S3FOLDER="$year/$month"
 # work out of the same directory as the file
 cd "$directory" || bail "failed to chdir to $directory"
 
+aws s3 ls --profile deeparchive s3://"$S3BUCKET"/"$S3FOLDER"/"$fn_noext" >/dev/null && bail "$file already exists in s3 bucket"
+
 # Create a lockfile before starting the upload pipeline.
 # If the lockfile for this file already exists then we bail.
 # The lockfile is only cleaned up after a successful upload and db insert.
