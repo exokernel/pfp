@@ -148,24 +148,18 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
 /// Runs chunk_size instances of command via Gnu Parallel each with a single file from the chunk as argument
 /// The number of parallel jobs used for the chunk is determined by the slots argument, which specifies the
 /// number of job slots for Gnu Parallel to use
-fn process_chunk(chunk_num: usize, chunk_size: usize, leftover: usize, slots: &str, command: &String, files: &Vec<String>) 
+fn process_chunk(chunk_num: usize, chunk_size: usize, num_items: usize, slots: &str, command: &String, files: &Vec<String>) 
    -> Result<(), Box<dyn Error>> {
-    debug!("chunk {} ({}): START", chunk_num + 1, chunk_size);
+    debug!("chunk {} ({}): START", chunk_num + 1, num_items);
     let index = chunk_size*chunk_num;
-    let chunk;
-    if leftover == 0 {
-        chunk = (&files[index..(index+chunk_size)]).to_vec();
-        debug!("chunk num {} size {}", chunk_num+1, chunk_size);
-        debug!("chunk start: {} chunk_end: {}", index, index+chunk_size-1);
-    } else {
-        chunk = (&files[index..(index+leftover)]).to_vec(); 
-        debug!("chunk num {} size {}", chunk_num+1, leftover);
-        debug!("chunk start: {} chunk_end: {}", index, index+leftover-1);
-    }
+    let chunk = (&files[index..(index+num_items)]).to_vec();
+    debug!("chunk num {} size {}", chunk_num+1, num_items);
+    debug!("chunk start: {} chunk_end: {}", index, index+num_items-1);
+
+    //for f in chunk.iter() {
+    //    debug!("f: {}", f);
+    //}
     //let output = parallelize(&command, slots, chunk);
-    for f in chunk.iter() {
-        debug!("f: {}", f);
-    }
     parallelize(&command, slots, chunk)?;
     //print!("{}", String::from_utf8_lossy(&output.stdout));
     //if ! output.stderr.is_empty() {
@@ -221,7 +215,7 @@ fn run(chunk_size: usize,
         // chunk 3:  [100..101] 100 1-thing
 
         for n in 0..num_chunks {
-            process_chunk(n, chunk_size, 0, slots, &command, &files)?;
+            process_chunk(n, chunk_size, chunk_size, slots, &command, &files)?;
         }
         // last chunk
         if leftover != 0 {
