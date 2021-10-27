@@ -236,7 +236,7 @@ fn run(chunk_size: usize,
         }
 
         if term.load(Ordering::Relaxed) {
-            debug!("PFP: CAUGHT SIGNAL! K Thx Bye!");
+            print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str());
             return Ok(());
         }
 
