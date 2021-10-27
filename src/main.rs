@@ -192,7 +192,7 @@ fn run(chunk_size: usize,
     // Do forever
     loop {
 
-        print(format!("PFP LOOP START").as_str());
+        print(format!("PFP: LOOP START").as_str());
 
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
