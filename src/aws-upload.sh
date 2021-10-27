@@ -3,17 +3,23 @@
 S3BUCKET="s3doj"
 S3FOLDER="upload-test"
 DBTABLE="files"
+SN=$(basename $0)
 
 bail() {
     msg=$1
-    #>&2 tsecho "$msg"
-    tsecho "$msg"
+    tserrcho "$msg"
+    #tsecho "$msg"
     exit 1
+}
+
+tserrcho() {
+    message=$1
+    >&2 echo "$(date "+%Y-%m-%d %T.%3N"): $SN ERROR: $message"
 }
 
 tsecho() {
     message=$1
-    echo "$(date "+%Y-%m-%d %T"): $message"
+    echo "$(date "+%Y-%m-%d %T.%3N"): $SN INFO: $message"
 }
 
 write_to_db() {
@@ -26,8 +32,8 @@ write_to_db() {
 
     tsecho "writing info for $filename to the database"
     # dbhost, database, user, pass in ~/.my.cnf under [client_test]
-    #mysql --defaults-group-suffix=_test -e "$dbinsert" || (>&2 tsecho "failed to write to database" && return 1)
-    mysql --defaults-group-suffix=_test -e "$dbinsert" || (tsecho "failed to write to database" && return 1)
+    mysql --defaults-group-suffix=_test -e "$dbinsert" || (tserrcho "failed to write $filename to database" && return 1)
+    #mysql --defaults-group-suffix=_test -e "$dbinsert" || (tsecho "failed to write to database" && return 1)
 }
 
 cleanup() {
