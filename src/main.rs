@@ -228,7 +228,7 @@ fn run(chunk_size: usize,
             return Ok(());
         }
 
-        debug!("Finished processing all files in input-path. Sleeping for {} seconds...", sleep_time);
+        print(format!("PFP: Finished processing all files in input-path. Sleeping for {} seconds...", sleep_time).as_str());
         std::thread::sleep(std::time::Duration::from_secs(sleep_time));
     }
 }
