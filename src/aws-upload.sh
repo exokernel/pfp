@@ -57,8 +57,7 @@ directory=$(dirname "$path")
 # WARNING: Big assumption here! We are passed a path that looks like /data/aws/YYYY-mm-dd/filename
 prefix="/data/aws/"
 if [[ $path != $prefix* ]]; then
-    echo "$path must start with $prefix"
-    exit 1
+    bail "$path must start with $prefix"
 fi
 datedir=${directory#$prefix} # get rid of prefix, leaving only the date portion
 year=${datedir%-*-*}
