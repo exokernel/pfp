@@ -8,6 +8,9 @@ use log::{debug};
 use std::fs;
 use std::path::{Path};
 use chrono::prelude::*;
+use std::sync::atomic::{AtomicBool, Ordering};
+//use signal_hook;
+
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "pfp", about = "Parallel File Processor")]
@@ -182,6 +185,10 @@ fn run(chunk_size: usize,
        script: Option<String>)
    -> Result<(),Box<dyn Error>> {
 
+    let term = std::sync::Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGTERM, std::sync::Arc::clone(&term))?;
+    signal_hook::flag::register(signal_hook::consts::SIGINT, std::sync::Arc::clone(&term))?;
+
     let slots = job_slots.as_str();
 
     let mut command = String::from("echo $(date) {#}-{%}-{}");
@@ -225,6 +232,11 @@ fn run(chunk_size: usize,
         // 3. Do any necessary postprocessing
 
         if ! daemon {
+            return Ok(());
+        }
+
+        if term.load(Ordering::Relaxed) {
+            debug!("PFP: CAUGHT SIGNAL! K Thx Bye!");
             return Ok(());
         }
 
