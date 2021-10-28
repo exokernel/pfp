@@ -147,37 +147,18 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
     Ok(())
 }
 
-/// Process a single chunk of input in parallel
-/// Runs chunk_size instances of command via Gnu Parallel each with a single file from the chunk as argument
-/// The number of parallel jobs used for the chunk is determined by the slots argument, which specifies the
-/// number of job slots for Gnu Parallel to use
-fn process_chunk(chunk_num: usize, chunk_size: usize, num_items: usize, slots: &str, command: &String, files: &Vec<String>) 
-   -> Result<(), Box<dyn Error>> {
-    debug!("chunk {} ({}): START", chunk_num + 1, num_items);
-    let index = chunk_size*chunk_num;
-    let chunk = (&files[index..(index+num_items)]).to_vec();
-    debug!("chunk num {} size {}", chunk_num+1, num_items);
-    debug!("chunk start: {} chunk_end: {}", index, index+num_items-1);
-
-    //for f in chunk.iter() {
-    //    debug!("f: {}", f);
-    //}
-    //let output = parallelize(&command, slots, chunk);
-    parallelize(&command, slots, chunk)?;
-    //print!("{}", String::from_utf8_lossy(&output.stdout));
-    //if ! output.stderr.is_empty() {
-    //    eprintln!("{} ERROR: {}", command, String::from_utf8_lossy(&output.stderr));
-    //}
-    debug!("chunk {} ({}): DONE", chunk_num + 1, chunk_size);
-    Ok(())
-}
-
 fn should_term(term: &std::sync::Arc<std::sync::atomic::AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
         print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str()); 
         return true;
     }
     false
+}
+
+fn get_chunk(index: usize, chunk_size: usize, files: &Vec<String>) -> Vec<String>{
+    let start = index*chunk_size;
+    let end = start+chunk_size;
+    files[start..end].to_vec()
 }
 
 /// Do the thing forever unless interrupted.
@@ -234,14 +215,23 @@ fn run(chunk_size: usize,
         // chunk 3:  [100..101] 100 1-thing
 
         for n in 0..num_chunks {
-            process_chunk(n, chunk_size, chunk_size, slots, &command, &files)?;
+            debug!("chunk {} ({}): START", n+1, chunk_size);
+            debug!("chunk start: {} chunk_end: {}", n*chunk_size, n*chunk_size+chunk_size-1);
+            let chunk = get_chunk(n, chunk_size, &files);
+            parallelize(&command, &slots, chunk)?;
+            debug!("chunk {} ({}): DONE", n+1, chunk_size);
             if should_term(&term) {
                 return Ok(());
             }
         }
+
         // last chunk
         if leftover != 0 {
-            process_chunk(num_chunks, chunk_size, leftover, slots, &command, &files)?;
+            debug!("chunk {} ({}): START", num_chunks+1, leftover);
+            debug!("chunk start: {} chunk_end: {}", num_chunks*chunk_size, num_chunks*chunk_size+leftover-1);
+            let chunk = get_chunk(num_chunks, leftover, &files);
+            parallelize(&command, &slots, chunk)?;
+            debug!("chunk {} ({}): DONE", num_chunks+1, leftover);
         }
 
         // 3. Do any necessary postprocessing
