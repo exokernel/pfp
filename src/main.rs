@@ -8,8 +8,9 @@ use log::{debug};
 use std::fs;
 use std::path::{Path};
 use chrono::prelude::*;
+use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
-//use signal_hook;
+use signal_hook::consts::{SIGINT, SIGTERM};
 
 
 #[derive(Debug, StructOpt)]
@@ -147,9 +148,9 @@ fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io:
     Ok(())
 }
 
-fn should_term(term: &std::sync::Arc<std::sync::atomic::AtomicBool>) -> bool {
+fn should_term(term: &Arc<AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
-        print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str()); 
+        print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str());
         return true;
     }
     false
@@ -173,9 +174,9 @@ fn run(chunk_size: usize,
        script: Option<String>)
    -> Result<(),Box<dyn Error>> {
 
-    let term = std::sync::Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(signal_hook::consts::SIGTERM, std::sync::Arc::clone(&term))?;
-    signal_hook::flag::register(signal_hook::consts::SIGINT, std::sync::Arc::clone(&term))?;
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
+    signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
 
     let slots = job_slots.as_str();
 
