@@ -201,6 +201,10 @@ fn run(chunk_size: usize,
         }
         get_files(Path::new(&input_path), &extensions, &mut files)?;
 
+        if should_term(&term) {
+            return Ok(());
+        }
+
         // 2. process chunks of input in parallel
         let num_chunks = files.len() / chunk_size;
         let leftover   = files.len() % chunk_size;
