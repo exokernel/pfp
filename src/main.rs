@@ -209,6 +209,10 @@ fn run(chunk_size: usize,
 
         print(format!("PFP: LOOP START").as_str());
 
+        if should_term(&term) {
+            return Ok(());
+        }
+
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
         if ! files.is_empty() {
@@ -242,11 +246,7 @@ fn run(chunk_size: usize,
 
         // 3. Do any necessary postprocessing
 
-        if ! daemon {
-            return Ok(());
-        }
-
-        if should_term(&term) {
+        if (! daemon) || should_term(&term) {
             return Ok(());
         }
 
