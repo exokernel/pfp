@@ -155,8 +155,7 @@ fn should_term(term: &std::sync::Arc<std::sync::atomic::AtomicBool>) -> bool {
     false
 }
 
-fn get_chunk(index: usize, chunk_size: usize, num_items: usize, files: &Vec<String>) -> Vec<String>{
-    let start = index*chunk_size;
+fn get_chunk(start: usize, num_items: usize, files: &Vec<String>) -> Vec<String>{
     let end = start+num_items;
     files[start..end].to_vec()
 }
@@ -221,7 +220,7 @@ fn run(chunk_size: usize,
         for n in 0..num_chunks {
             debug!("chunk {} ({}): START", n+1, chunk_size);
             debug!("chunk start: {} chunk_end: {}", n*chunk_size, n*chunk_size+chunk_size-1);
-            let chunk = get_chunk(n, chunk_size, chunk_size, &files);
+            let chunk = get_chunk(n*chunk_size, chunk_size, &files);
             parallelize(&command, &slots, chunk)?;
             debug!("chunk {} ({}): DONE", n+1, chunk_size);
             if should_term(&term) {
@@ -233,7 +232,7 @@ fn run(chunk_size: usize,
         if leftover != 0 {
             debug!("chunk {} ({}): START", num_chunks+1, leftover);
             debug!("chunk start: {} chunk_end: {}", num_chunks*chunk_size, num_chunks*chunk_size+leftover-1);
-            let chunk = get_chunk(num_chunks, chunk_size, leftover, &files);
+            let chunk = get_chunk(num_chunks*chunk_size, leftover, &files);
             parallelize(&command, &slots, chunk)?;
             debug!("chunk {} ({}): DONE", num_chunks+1, leftover);
         }
