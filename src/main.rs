@@ -172,6 +172,14 @@ fn process_chunk(chunk_num: usize, chunk_size: usize, num_items: usize, slots: &
     Ok(())
 }
 
+fn should_term(term: &std::sync::Arc<std::sync::atomic::AtomicBool>) -> bool {
+    if term.load(Ordering::Relaxed) {
+        print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str()); 
+        return true;
+    }
+    false
+}
+
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
@@ -223,6 +231,9 @@ fn run(chunk_size: usize,
 
         for n in 0..num_chunks {
             process_chunk(n, chunk_size, chunk_size, slots, &command, &files)?;
+            if should_term(&term) {
+                return Ok(());
+            }
         }
         // last chunk
         if leftover != 0 {
@@ -235,8 +246,7 @@ fn run(chunk_size: usize,
             return Ok(());
         }
 
-        if term.load(Ordering::Relaxed) {
-            print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str());
+        if should_term(&term) {
             return Ok(());
         }
 
