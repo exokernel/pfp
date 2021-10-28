@@ -218,12 +218,17 @@ fn run(chunk_size: usize,
         // chunk 2:  [50..100] 50-99 50-things
         // chunk 3:  [100..101] 100 1-thing
 
+        let mut total_chunks = num_chunks;
+        if leftover != 0 {
+            total_chunks += 1;
+        }
+
         for n in 0..num_chunks {
-            debug!("chunk {} ({}): START", n+1, chunk_size);
+            debug!("chunk {}/{} ({}): START", n+1, total_chunks, chunk_size);
             debug!("chunk start: {} chunk_end: {}", n*chunk_size, n*chunk_size+chunk_size-1);
             let chunk = get_chunk(n*chunk_size, chunk_size, &files);
             parallelize(&command, &slots, chunk)?;
-            debug!("chunk {} ({}): DONE", n+1, chunk_size);
+            debug!("chunk {}/{} ({}): DONE", n+1, total_chunks, chunk_size);
             if should_term(&term) {
                 return Ok(());
             }
@@ -231,11 +236,11 @@ fn run(chunk_size: usize,
 
         // last chunk
         if leftover != 0 {
-            debug!("chunk {} ({}): START", num_chunks+1, leftover);
+            debug!("chunk {}/{} ({}): START", num_chunks+1, total_chunks, leftover);
             debug!("chunk start: {} chunk_end: {}", num_chunks*chunk_size, num_chunks*chunk_size+leftover-1);
             let chunk = get_chunk(num_chunks*chunk_size, leftover, &files);
             parallelize(&command, &slots, chunk)?;
-            debug!("chunk {} ({}): DONE", num_chunks+1, leftover);
+            debug!("chunk {}/{} ({}): DONE", num_chunks+1, total_chunks, leftover);
         }
 
         // 3. Do any necessary postprocessing
