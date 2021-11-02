@@ -1,0 +1,17 @@
+[Unit]
+Description=Upload Files to AWS using the Parallel File Processor (pfp)
+After=network.target
+
+[Service]
+Environment="HOME=/root"
+ExecStart=/root/pfp --daemon --extensions "mp4,flv" --sleep-time 10 --job-slots 75 --chunk-size 150 --script /root/aws-upload.sh /data/aws
+#ExecStart=/root/pfp --debug --daemon --extensions "mp4,flv" --sleep-time 60 --script /root/aws-upload.sh /data/upload-test-test
+
+# Wait for pfp to stop on its own
+TimeoutStopSec=infinity
+KillMode=mixed
+StandardOutput=append:/var/log/awsv2-test.output.log
+StandardError=append:/var/log/awsv2-test.error.log
+
+[Install]
+WantedBy=multi-user.target

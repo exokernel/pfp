@@ -32,8 +32,8 @@ write_to_db() {
 
     tsecho "writing info for $filename to the database"
     # dbhost, database, user, pass in ~/.my.cnf under [client_test]
-    mysql --defaults-group-suffix=_test -e "$dbinsert" || (tserrcho "failed to write $filename to database" && return 1)
-    #mysql --defaults-group-suffix=_test -e "$dbinsert" || (tsecho "failed to write to database" && return 1)
+    mysql --defaults-group-suffix=_awsv2 -e "$dbinsert" || (tserrcho "failed to write $filename to database" && return 1)
+    #mysql --defaults-group-suffix=_awsv2 -e "$dbinsert" || (tsecho "failed to write to database" && return 1)
 }
 
 cleanup() {
