@@ -55,16 +55,13 @@ pub fn parallelize(command: &str, job_slots: &str, input: Vec<String>)
     let mut child = Command::new("parallel")
         .args(parallel_args)
         .stdin(Stdio::piped())
-        //.stdout(Stdio::piped())
         .spawn()?;
-        //.expect("failed to execute");
 
     let mut stdin = child.stdin.take().ok_or("Failed to open stdin")?;
     std::thread::spawn(move || {
         stdin.write_all(input.join("\n").as_bytes()).expect("Failed to write to stdin");
     });
 
-    //return child.wait_with_output().expect("Failed to read stdout");
     child.wait()?;
 
     Ok(())

@@ -15,10 +15,6 @@ struct Opt {
     #[structopt(short, long)]
     debug: bool,
 
-    // Activate test mode
-    //#[structopt(short, long)]
-    //test: bool,
-
     /// Process files in input path continuously
     #[structopt(long)]
     daemon: bool,
