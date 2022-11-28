@@ -27,6 +27,8 @@ pub fn eprint(message: &str) {
 /// Print with timestamp
 fn tp(message: &str, fd: Fd) {
     let local: DateTime<Local> = Local::now();
+    // foo
+    // bar
     match fd {
         Fd::StdOut => {
             println!("{}: {}", local.to_string(), message);
