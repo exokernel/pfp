@@ -30,12 +30,8 @@ fn tp(message: &str, fd: Fd) {
     // foo
     // bar
     match fd {
-        Fd::StdOut => {
-            println!("{}: {}", local.to_string(), message);
-        },
-        Fd::StdErr => {
-            eprintln!("{}: {}", local.to_string(), message);
-        }
+        Fd::StdOut => println!("{}: {}", local.to_string(), message),
+        Fd::StdErr => eprintln!("{}: {}", local.to_string(), message),
     }
 }
 
