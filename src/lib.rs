@@ -1,13 +1,13 @@
-use std::io::{Write};
-use std::io;
-use std::process::{Command, Stdio};
-use std::fs;
-use std::path::{Path};
 use chrono::prelude::*;
-use std::sync::{Arc};
-use std::sync::atomic::{AtomicBool, Ordering};
-use log::{debug};
+use log::debug;
 use std::error::Error;
+use std::fs;
+use std::io;
+use std::io::Write;
+use std::path::Path;
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 enum Fd {
     StdOut,
@@ -16,7 +16,7 @@ enum Fd {
 
 /// Print to stdout w timestamp
 pub fn print(message: &str) {
-   tp(message, Fd::StdOut);
+    tp(message, Fd::StdOut);
 }
 
 /// Print to stderr w timestamp
@@ -39,9 +39,11 @@ fn tp(message: &str, fd: Fd) {
 /// Runs parallel instances of command with one item of input per instance
 /// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
 //fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
-pub fn parallelize(command: &str, job_slots: &str, input: Vec<String>)
-   -> Result<(), Box<dyn Error>> {
-
+pub fn parallelize(
+    command: &str,
+    job_slots: &str,
+    input: Vec<String>,
+) -> Result<(), Box<dyn Error>> {
     let mut parallel_args: Vec<String> = vec![];
     if job_slots != "100%" {
         parallel_args.push(format!("-j{}", job_slots));
@@ -57,7 +59,9 @@ pub fn parallelize(command: &str, job_slots: &str, input: Vec<String>)
 
     let mut stdin = child.stdin.take().ok_or("Failed to open stdin")?;
     std::thread::spawn(move || {
-        stdin.write_all(input.join("\n").as_bytes()).expect("Failed to write to stdin");
+        stdin
+            .write_all(input.join("\n").as_bytes())
+            .expect("Failed to write to stdin");
     });
 
     child.wait()?;
@@ -82,10 +86,9 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
             } else if extensions.is_empty() {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
-            } else if
-              path.extension().is_some() &&
-              extensions.contains(&path.extension().unwrap()
-                                       .to_str().unwrap()) {
+            } else if path.extension().is_some()
+                && extensions.contains(&path.extension().unwrap().to_str().unwrap())
+            {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
             }
@@ -102,7 +105,7 @@ pub fn should_term(term: &Arc<AtomicBool>) -> bool {
     false
 }
 
-pub fn get_chunk(start: usize, num_items: usize, files: &Vec<String>) -> Vec<String>{
-    let end = start+num_items;
+pub fn get_chunk(start: usize, num_items: usize, files: &Vec<String>) -> Vec<String> {
+    let end = start + num_items;
     files[start..end].to_vec()
 }

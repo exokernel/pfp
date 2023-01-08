@@ -1,12 +1,12 @@
-use std::process;
-use std::error::Error;
-use structopt::StructOpt;
-use log::{debug};
-use signal_hook::consts::{SIGINT, SIGTERM};
-use std::path::{Path};
-use std::sync::{Arc};
-use std::sync::atomic::{AtomicBool};
+use log::debug;
 use pfp::*;
+use signal_hook::consts::{SIGINT, SIGTERM};
+use std::error::Error;
+use std::path::Path;
+use std::process;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "pfp", about = "Parallel File Processor")]
@@ -22,7 +22,7 @@ struct Opt {
     /// List of extensions delimited by commas. Only files ending in these extensions
     /// will be processed. E.g. -e "mp4,flv"
     /// If this option is not provided then all files under the input_path will be processed
-    #[structopt(short,long)]
+    #[structopt(short, long)]
     extensions: Option<String>,
 
     /// Number of things to try to do in parallel at one time.
@@ -38,7 +38,7 @@ struct Opt {
 
     /// Seconds to sleep before processing all files in input_path again.
     /// Only used if --daemon is specified
-    #[structopt(short="t", long="sleep-time", default_value="5")]
+    #[structopt(short = "t", long = "sleep-time", default_value = "5")]
     sleep_time: u64,
 
     /// Shell command or script to run in parallel
@@ -53,15 +53,15 @@ struct Opt {
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
 /// TODO: Possibly sleep after processing each chunk?
-fn run(chunk_size: usize,
-       job_slots: String,
-       sleep_time: u64,
-       daemon: bool,
-       extensions: Vec<&str>,
-       input_path: String,
-       script: Option<String>)
-   -> Result<(),Box<dyn Error>> {
-
+fn run(
+    chunk_size: usize,
+    job_slots: String,
+    sleep_time: u64,
+    daemon: bool,
+    extensions: Vec<&str>,
+    input_path: String,
+    script: Option<String>,
+) -> Result<(), Box<dyn Error>> {
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
     signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
@@ -75,7 +75,6 @@ fn run(chunk_size: usize,
 
     // Do forever
     loop {
-
         print(format!("PFP: LOOP START").as_str());
 
         if should_term(&term) {
@@ -84,7 +83,7 @@ fn run(chunk_size: usize,
 
         // 1. Get all the files in our input path
         let mut files: Vec<String> = vec![];
-        if ! files.is_empty() {
+        if !files.is_empty() {
             panic!("files is not empty");
         }
         get_files(Path::new(&input_path), &extensions, &mut files)?;
@@ -95,7 +94,7 @@ fn run(chunk_size: usize,
 
         // 2. process chunks of input in parallel
         let num_chunks = files.len() / chunk_size;
-        let leftover   = files.len() % chunk_size;
+        let leftover = files.len() % chunk_size;
         debug!("number of chunks {}", num_chunks);
         debug!("leftover {}", leftover);
 
@@ -112,11 +111,15 @@ fn run(chunk_size: usize,
         }
 
         for n in 0..num_chunks {
-            debug!("chunk {}/{} ({}): START", n+1, total_chunks, chunk_size);
-            debug!("chunk start: {} chunk_end: {}", n*chunk_size, n*chunk_size+chunk_size-1);
-            let chunk = get_chunk(n*chunk_size, chunk_size, &files);
+            debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk_size);
+            debug!(
+                "chunk start: {} chunk_end: {}",
+                n * chunk_size,
+                n * chunk_size + chunk_size - 1
+            );
+            let chunk = get_chunk(n * chunk_size, chunk_size, &files);
             parallelize(&command, &slots, chunk)?;
-            debug!("chunk {}/{} ({}): DONE", n+1, total_chunks, chunk_size);
+            debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk_size);
             if should_term(&term) {
                 return Ok(());
             }
@@ -124,20 +127,40 @@ fn run(chunk_size: usize,
 
         // last chunk
         if leftover != 0 {
-            debug!("chunk {}/{} ({}): START", num_chunks+1, total_chunks, leftover);
-            debug!("chunk start: {} chunk_end: {}", num_chunks*chunk_size, num_chunks*chunk_size+leftover-1);
-            let chunk = get_chunk(num_chunks*chunk_size, leftover, &files);
+            debug!(
+                "chunk {}/{} ({}): START",
+                num_chunks + 1,
+                total_chunks,
+                leftover
+            );
+            debug!(
+                "chunk start: {} chunk_end: {}",
+                num_chunks * chunk_size,
+                num_chunks * chunk_size + leftover - 1
+            );
+            let chunk = get_chunk(num_chunks * chunk_size, leftover, &files);
             parallelize(&command, &slots, chunk)?;
-            debug!("chunk {}/{} ({}): DONE", num_chunks+1, total_chunks, leftover);
+            debug!(
+                "chunk {}/{} ({}): DONE",
+                num_chunks + 1,
+                total_chunks,
+                leftover
+            );
         }
 
         // 3. Do any necessary postprocessing
 
-        if (! daemon) || should_term(&term) {
+        if (!daemon) || should_term(&term) {
             return Ok(());
         }
 
-        print(format!("PFP: Finished processing all files in input-path. Sleeping for {} seconds...", sleep_time).as_str());
+        print(
+            format!(
+                "PFP: Finished processing all files in input-path. Sleeping for {} seconds...",
+                sleep_time
+            )
+            .as_str(),
+        );
         std::thread::sleep(std::time::Duration::from_secs(sleep_time));
     }
 }
@@ -164,18 +187,22 @@ fn main() {
         ext_vec = vec![];
     }
 
-    env_logger::builder().target(env_logger::Target::Stdout).init();
+    env_logger::builder()
+        .target(env_logger::Target::Stdout)
+        .init();
 
     debug!("{:?}", opt);
     debug!("job_slots = {}", job_slots);
 
-    if let Err(e) = run(opt.chunk_size,
-                        job_slots,
-                        opt.sleep_time,
-                        opt.daemon,
-                        ext_vec,
-                        opt.input_path,
-                        opt.script) {
+    if let Err(e) = run(
+        opt.chunk_size,
+        job_slots,
+        opt.sleep_time,
+        opt.daemon,
+        ext_vec,
+        opt.input_path,
+        opt.script,
+    ) {
         eprint(format!("Oh noes! {}", e).as_str());
         process::exit(1);
     }
