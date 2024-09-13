@@ -95,11 +95,33 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
     Ok(())
 }
 
-pub fn get_files2<'a, F>(
+/// Recursively traverses a directory and applies a handler function to each file found.
+///
+/// This function takes a directory path, a mutable vector to store file paths, and a mutable
+/// closure that handles each file found. It recursively traverses the directory and its
+/// subdirectories, applying the handler function to each file.
+///
+/// # Arguments
+///
+/// * `dir` - A reference to the path of the directory to traverse.
+/// * `files` - A mutable reference to a vector of strings where the file paths will be stored.
+/// * `file_handler` - A mutable closure that takes a reference to a file path and a mutable
+///   reference to the vector of file paths. The closure is responsible for handling each file
+///   found.
+///
+/// # Returns
+///
+/// This function returns an `io::Result<()>` indicating success or failure.
+///
+/// # Errors
+///
+/// This function will return an error if it encounters any issues reading the directory or its
+/// entries.
+pub fn get_files2<F>(
     dir: &Path,
-    files: &'a mut Vec<String>,
+    files: & mut Vec<String>,
     file_handler: &mut F,
-) -> io::Result<&'a mut Vec<String>>
+) -> io::Result<()>
 where
     F: FnMut(&Path, &mut Vec<String>),
 {
@@ -115,7 +137,7 @@ where
         }
     }
 
-    Ok(files)
+    Ok(())
 }
 
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
