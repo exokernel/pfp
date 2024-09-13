@@ -83,10 +83,7 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
             if path.is_dir() {
                 debug!("D {:?}", path);
                 get_files(&path, extensions, files)?;
-            } else if extensions.is_empty() {
-                debug!("f {:?}", path);
-                files.push(path.display().to_string());
-            } else if extensions.contains(&path.extension().unwrap().to_str().unwrap()) {
+            } else if extensions.is_empty() || extensions.contains(&path.extension().unwrap().to_str().unwrap()) {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
             }
@@ -132,6 +129,7 @@ where
             if path.is_dir() {
                 get_files2(&path, files, file_handler)?;
             } else {
+                debug!("f {:?}", path);
                 file_handler(&path, files);
             }
         }
