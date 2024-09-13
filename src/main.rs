@@ -88,7 +88,9 @@ fn run(
         }
         //get_files(Path::new(&input_path), &extensions, &mut files)?;
         get_files2(Path::new(&input_path), &mut files, &mut |path, files| {
-            if extensions.is_empty() || extensions.contains(&path.extension().unwrap().to_str().unwrap()) {
+            if extensions.is_empty()
+                || extensions.contains(&path.extension().unwrap().to_str().unwrap())
+            {
                 // only add files with the given extensions or all files if none were given
                 files.push(path.display().to_string());
             }

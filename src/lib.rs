@@ -83,7 +83,9 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
             if path.is_dir() {
                 debug!("D {:?}", path);
                 get_files(&path, extensions, files)?;
-            } else if extensions.is_empty() || extensions.contains(&path.extension().unwrap().to_str().unwrap()) {
+            } else if extensions.is_empty()
+                || extensions.contains(&path.extension().unwrap().to_str().unwrap())
+            {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
             }
@@ -114,11 +116,7 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
 ///
 /// This function will return an error if it encounters any issues reading the directory or its
 /// entries.
-pub fn get_files2<F>(
-    dir: &Path,
-    files: & mut Vec<String>,
-    file_handler: &mut F,
-) -> io::Result<()>
+pub fn get_files2<F>(dir: &Path, files: &mut Vec<String>, file_handler: &mut F) -> io::Result<()>
 where
     F: FnMut(&Path, &mut Vec<String>),
 {
