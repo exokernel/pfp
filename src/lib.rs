@@ -125,6 +125,7 @@ where
             let entry = e?;
             let path = entry.path();
             if path.is_dir() {
+                debug!("D {:?}", path);
                 get_files2(&path, files, file_handler)?;
             } else {
                 debug!("f {:?}", path);
