@@ -86,9 +86,7 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
             } else if extensions.is_empty() {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
-            } else if path.extension().is_some()
-                && extensions.contains(&path.extension().unwrap().to_str().unwrap())
-            {
+            } else if extensions.contains(&path.extension().unwrap().to_str().unwrap()) {
                 debug!("f {:?}", path);
                 files.push(path.display().to_string());
             }
@@ -97,7 +95,11 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
     Ok(())
 }
 
-pub fn get_files2<'a, F>(dir: &Path, files: &'a mut Vec<String>, file_handler: &mut F) -> io::Result<&'a mut Vec<String>>
+pub fn get_files2<'a, F>(
+    dir: &Path,
+    files: &'a mut Vec<String>,
+    file_handler: &mut F,
+) -> io::Result<&'a mut Vec<String>>
 where
     F: FnMut(&Path, &mut Vec<String>),
 {

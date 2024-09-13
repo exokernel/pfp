@@ -90,9 +90,7 @@ fn run(
         get_files2(Path::new(&input_path), &mut files, &mut |path, files| {
             if extensions.is_empty() {
                 files.push(path.display().to_string());
-            } else if path.extension().is_some()
-                && extensions.contains(&path.extension().unwrap().to_str().unwrap())
-            {
+            } else if extensions.contains(&path.extension().unwrap().to_str().unwrap()) {
                 files.push(path.display().to_string());
             }
         })?;
