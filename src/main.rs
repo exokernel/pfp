@@ -88,7 +88,7 @@ fn run(
         }
         //get_files(Path::new(&input_path), &extensions, &mut files)?;
         get_files2(Path::new(&input_path), &mut |path| {
-            if extensions.is_none()
+            if extensions.as_ref().is_none()
                 || (path.extension().is_some()
                     && extensions
                         .as_ref()
