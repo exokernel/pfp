@@ -97,6 +97,25 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
     Ok(())
 }
 
+pub fn get_files2<'a, F>(dir: &Path, files: &'a mut Vec<String>, file_handler: &mut F) -> io::Result<&'a mut Vec<String>>
+where
+    F: FnMut(&Path, &mut Vec<String>),
+{
+    if dir.is_dir() {
+        for e in fs::read_dir(dir)? {
+            let entry = e?;
+            let path = entry.path();
+            if path.is_dir() {
+                get_files2(&path, files, file_handler)?;
+            } else {
+                file_handler(&path, files);
+            }
+        }
+    }
+
+    Ok(files)
+}
+
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
         print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str());

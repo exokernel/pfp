@@ -86,7 +86,16 @@ fn run(
         if !files.is_empty() {
             panic!("files is not empty");
         }
-        get_files(Path::new(&input_path), &extensions, &mut files)?;
+        //get_files(Path::new(&input_path), &extensions, &mut files)?;
+        get_files2(Path::new(&input_path), &mut files, &mut |path, files| {
+            if extensions.is_empty() {
+                files.push(path.display().to_string());
+            } else if path.extension().is_some()
+                && extensions.contains(&path.extension().unwrap().to_str().unwrap())
+            {
+                files.push(path.display().to_string());
+            }
+        })?;
 
         if should_term(&term) {
             return Ok(());
