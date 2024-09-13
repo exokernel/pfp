@@ -58,7 +58,7 @@ fn run(
     job_slots: String,
     sleep_time: u64,
     daemon: bool,
-    extensions: Vec<&str>,
+    extensions: Option<Vec<&str>>,
     input_path: String,
     script: Option<String>,
 ) -> Result<(), Box<dyn Error>> {
@@ -87,9 +87,13 @@ fn run(
             panic!("files is not empty");
         }
         //get_files(Path::new(&input_path), &extensions, &mut files)?;
-        get_files2(Path::new(&input_path), &mut files, &mut |path, files| {
-            if extensions.is_empty()
-                || extensions.contains(&path.extension().unwrap().to_str().unwrap())
+        get_files2(Path::new(&input_path), &mut |path| {
+            if extensions.is_none()
+                || (path.extension().is_some()
+                    && extensions
+                        .as_ref()
+                        .unwrap()
+                        .contains(&path.extension().unwrap().to_str().unwrap()))
             {
                 // only add files with the given extensions or all files if none were given
                 files.push(path.display().to_string());
@@ -187,12 +191,12 @@ fn main() {
     }
 
     let ext_string: String;
-    let ext_vec: Vec<&str>;
+    let ext_vec: Option<Vec<&str>>;
     if opt.extensions.is_some() {
         ext_string = opt.extensions.clone().unwrap();
-        ext_vec = ext_string.as_str().split(",").collect();
+        ext_vec = Some(ext_string.as_str().split(",").collect());
     } else {
-        ext_vec = vec![];
+        ext_vec = None;
     }
 
     env_logger::builder()
