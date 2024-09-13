@@ -103,9 +103,8 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
 /// # Arguments
 ///
 /// * `dir` - A reference to the path of the directory to traverse.
-/// * `file_handler` - A mutable closure that takes a reference to a file path and a mutable
-///   reference to the vector of file paths. The closure is responsible for handling each file
-///   found.
+/// * `file_handler` - A mutable closure that takes a reference to a file path. The closure is responsible for handling
+///   each file found.
 ///
 /// # Returns
 ///
