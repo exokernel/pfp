@@ -6,7 +6,7 @@ use std::error::Error;
 use std::path::Path;
 use std::process;
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use structopt::StructOpt;
 
@@ -118,7 +118,7 @@ fn run(
             rayon::ThreadPoolBuilder::new().build_global()?;
         }
 
-        let processed_chunks = Arc::new(AtomicUsize::new(0));
+        let mut processed_chunks = 0;
 
         debug!("command: {}", command);
 
@@ -149,19 +149,19 @@ fn run(
                     Ok(())
                 })?;
 
-            let chunks_done = processed_chunks.fetch_add(1, Ordering::SeqCst) + 1;
+            processed_chunks += 1;
+
             debug!(
                 "chunk {}/{} ({}): DONE",
-                chunks_done,
+                processed_chunks,
                 total_chunks,
                 chunk.len()
             );
         }
 
-        let final_processed = processed_chunks.load(Ordering::SeqCst);
         debug!(
             "Processed {} out of {} chunks",
-            final_processed, total_chunks
+            processed_chunks, total_chunks
         );
         debug!("Total number of files {}", files.len());
 
