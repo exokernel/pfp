@@ -1,9 +1,9 @@
-use log::debug;
+use log::{debug, error};
 use pfp::*;
 use rayon::prelude::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
@@ -48,11 +48,11 @@ struct Opt {
     script: Option<String>,
 
     /// Directory to read files from
-    input_path: String,
+    input_path: PathBuf,
 }
 
 /// Do the thing forever unless interrupted.
-/// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
+/// Read all files in the input path and feed them in chunks to rayon to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
 fn run(
     chunk_size: usize,
@@ -60,7 +60,7 @@ fn run(
     sleep_time: u64,
     daemon: bool,
     extensions: Option<Vec<&str>>,
-    input_path: String,
+    input_path: PathBuf,
     script: Option<String>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let term = Arc::new(AtomicBool::new(false));
@@ -140,7 +140,7 @@ fn run(
                     let output = Command::new(&command).arg(file).output()?;
 
                     if !output.status.success() {
-                        debug!("Command failed for file: {}", file);
+                        error!("Command failed for file: {}", file);
                     } else {
                         debug!("Processed file: {}", file);
                         debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
@@ -171,12 +171,9 @@ fn run(
             return Ok(());
         }
 
-        print(
-            format!(
-                "PFP: Finished processing all files in input-path. Sleeping for {} seconds...",
-                sleep_time
-            )
-            .as_str(),
+        log::info!(
+            "PFP: Finished processing all files in input-path. Sleeping for {} seconds...",
+            sleep_time
         );
         std::thread::sleep(std::time::Duration::from_secs(sleep_time));
     }
