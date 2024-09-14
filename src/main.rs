@@ -1,10 +1,12 @@
 use log::debug;
 use pfp::*;
+use rayon::prelude::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::error::Error;
 use std::path::Path;
 use std::process;
-use std::sync::atomic::AtomicBool;
+use std::process::Command;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use structopt::StructOpt;
 
@@ -55,20 +57,19 @@ struct Opt {
 /// TODO: Use Rayon library instead of GNU Parallel. This will make it a pure Rust solution!
 fn run(
     chunk_size: usize,
-    job_slots: String,
+    job_slots: Option<usize>,
     sleep_time: u64,
     daemon: bool,
     extensions: Option<Vec<&str>>,
     input_path: String,
     script: Option<String>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), Box<dyn Error + Send + Sync>> {
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
     signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
 
-    let slots = job_slots.as_str();
 
-    let mut command = String::from("echo $(date) {#}-{%}-{}");
+    let mut command = String::from("echo");
     if script.is_some() {
         command = script.unwrap();
     }
@@ -106,24 +107,65 @@ fn run(
 
         // 2. process chunks of input in parallel
         let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
-        debug!("number of chunks {}", total_chunks);
 
-        files.chunks(chunk_size).enumerate().try_for_each(
-            |(n, chunk)| -> Result<(), Box<dyn Error>> {
-                debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
-                debug!(
-                    "chunk start: {} chunk_end: {}",
-                    n * chunk_size,
-                    n * chunk_size + chunk_size - 1
-                );
+        // Configure the thread pool
+        // In your run function:
+        if let Some(slots) = job_slots {
+            // If job_slots is specified, use that number
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(slots)
+                .build_global()?;
+        } else {
+            // If job_slots is not specified, let Rayon use its default
+            rayon::ThreadPoolBuilder::new().build_global()?;
+        }
 
-                parallelize(&command, &slots, chunk.to_vec())?;
+        let processed_chunks = Arc::new(AtomicUsize::new(0));
 
-                debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk.len());
+        debug!("command: {}", command);
 
-                Ok(())
-            },
-        )?;
+        for (n, chunk) in files.chunks(chunk_size).enumerate() {
+            if should_term(&term) {
+                return Ok(());
+            }
+
+            debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
+            debug!(
+                "chunk start: {} chunk_end: {}",
+                n * chunk_size,
+                n * chunk_size + chunk.len() - 1
+            );
+
+            chunk
+                .par_iter()
+                .try_for_each(|file| -> Result<(), Box<dyn Error + Send + Sync>> {
+                    let output = Command::new(&command).arg(file).output()?;
+
+                    if !output.status.success() {
+                        debug!("Command failed for file: {}", file);
+                    } else {
+                        debug!("Processed file: {}", file);
+                        debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                    }
+
+                    Ok(())
+                })?;
+
+            let chunks_done = processed_chunks.fetch_add(1, Ordering::SeqCst) + 1;
+            debug!(
+                "chunk {}/{} ({}): DONE",
+                chunks_done,
+                total_chunks,
+                chunk.len()
+            );
+        }
+
+        let final_processed = processed_chunks.load(Ordering::SeqCst);
+        debug!(
+            "Processed {} out of {} chunks",
+            final_processed, total_chunks
+        );
+        debug!("Total number of files {}", files.len());
 
         // 3. Do any necessary postprocessing
 
@@ -149,13 +191,6 @@ fn main() {
         std::env::set_var("RUST_LOG", "debug");
     }
 
-    // By default we'll use -j 100% to run one job per CPU core
-    let mut job_slots = String::from("100%");
-    if opt.job_slots.is_some() {
-        job_slots = opt.job_slots.unwrap().to_string();
-    }
-    //let job_slots: String = opt.job_slots.unwrap_or_else(|| "100%".to_string());
-
     let ext_vec = opt.extensions.as_ref().map(|s| s.split(",").collect());
 
     env_logger::builder()
@@ -163,11 +198,13 @@ fn main() {
         .init();
 
     debug!("{:?}", opt);
-    debug!("job_slots = {}", job_slots);
+    if opt.job_slots.is_some() {
+        debug!("job_slots = {}", opt.job_slots.unwrap());
+    }
 
     if let Err(e) = run(
         opt.chunk_size,
-        job_slots,
+        opt.job_slots,
         opt.sleep_time,
         opt.daemon,
         ext_vec,
