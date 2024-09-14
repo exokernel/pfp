@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-S3BUCKET="s3doj"
+S3BUCKET="somebucket"
 S3FOLDER="upload-test"
 DBTABLE="files"
 SN=$(basename $0)
@@ -77,7 +77,7 @@ S3FOLDER="$year/$month"
 # work out of the same directory as the file
 cd "$directory" || bail "failed to chdir to $directory"
 
-aws s3 ls --profile deeparchive s3://"$S3BUCKET"/"$S3FOLDER"/"$fn_noext" >/dev/null && bail "$file already exists in s3 bucket"
+aws s3 ls --profile someprofile s3://"$S3BUCKET"/"$S3FOLDER"/"$fn_noext" >/dev/null && bail "$file already exists in s3 bucket"
 
 # Create a lockfile before starting the upload pipeline.
 # If the lockfile for this file already exists then we bail.
@@ -95,12 +95,12 @@ md5sum "$file" > "$file".md5 || bail "failed to create md5 file for $file"
 # tarball-encrypt-upload pipeline
 # if we successfully upload a file then we write a record to the database
 # and then remove the original file
-#aws s3 cp --profile deeparchive - s3://$S3BUCKET/$S3FOLDER/"$fn_noext".test)\
+#aws s3 cp --profile someprofile - s3://$S3BUCKET/$S3FOLDER/"$fn_noext".test)\
 starttime_ms="$(date "+%s%3N")"
 endtime_ms=$starttime_ms
 tar -cz -f - "$file".md5 "$file" |\
-gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r 1539150C -o - |\
-aws s3 cp --profile deeparchive --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/"$S3FOLDER"/"$fn_noext"\
+gpg --batch --no-tty --encrypt --cipher-algo AES256 --compress-algo none -r someid -o - |\
+aws s3 cp --profile someprofile --storage-class DEEP_ARCHIVE - s3://$S3BUCKET/"$S3FOLDER"/"$fn_noext"\
 && endtime_ms="$(date "+%s%3N")" && write_to_db "$path"\
 && cleanup "$file"
 
