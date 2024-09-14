@@ -162,7 +162,7 @@ fn run(
 
         // 3. Do any necessary postprocessing
 
-        if (!daemon) || should_term(&term) {
+        if !daemon || should_term(&term) {
             return Ok(());
         }
 
@@ -189,15 +189,17 @@ fn main() {
     if opt.job_slots.is_some() {
         job_slots = opt.job_slots.unwrap().to_string();
     }
+    //let job_slots: String = opt.job_slots.unwrap_or_else(|| "100%".to_string());
 
-    let ext_string: String;
-    let ext_vec: Option<Vec<&str>>;
-    if opt.extensions.is_some() {
-        ext_string = opt.extensions.clone().unwrap();
-        ext_vec = Some(ext_string.as_str().split(",").collect());
-    } else {
-        ext_vec = None;
-    }
+    //let ext_string: String;
+    //let ext_vec: Option<Vec<&str>>;
+    //if opt.extensions.is_some() {
+    //    ext_string = opt.extensions.clone().unwrap();
+    //    ext_vec = Some(ext_string.as_str().split(",").collect());
+    //} else {
+    //    ext_vec = None;
+    //}
+    let ext_vec = opt.extensions.as_ref().map(|s| s.split(",").collect());
 
     env_logger::builder()
         .target(env_logger::Target::Stdout)
