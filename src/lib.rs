@@ -8,6 +8,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use walkdir::WalkDir;
 
 enum Fd {
     StdOut,
@@ -71,7 +72,7 @@ pub fn parallelize(
 
 /// Fill a vector with all the file paths under the given dir (recursive)
 /// that have the given extensions
-/// TODO: Would be better to pass a closure for adding files to the list
+/// DONE (in get_files2): Would be better to pass a closure for adding files to the list
 /// Instead of checking if extensions is empty every iteration let the caller decide what determines
 /// if a file gets appended to the list. It could pass one closure that unconditionally adds files if
 /// the list of extensions is empty, otherwise a closure that checks the file against the extensions list
@@ -92,6 +93,37 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
         }
     }
     Ok(())
+}
+
+pub fn get_files3(
+    input_path: &Path,
+    extensions: &Option<Vec<&str>>,
+) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+    let mut files = Vec::new();
+
+    let should_include = |file_path: &Path| -> bool {
+        if let Some(exts) = extensions {
+            file_path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| exts.contains(&ext))
+                .unwrap_or(false)
+        } else {
+            true
+        }
+    };
+
+    for entry in WalkDir::new(input_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(Result::ok)
+    {
+        if entry.file_type().is_file() && should_include(entry.path()) {
+            files.push(entry.path().to_string_lossy().into_owned());
+        }
+    }
+
+    Ok(files)
 }
 
 /// Recursively traverses a directory and applies a handler function to each file found.

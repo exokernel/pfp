@@ -23,3 +23,6 @@ signal-hook = "0.3"
 
 # parallelism
 rayon = "1.10.0"
+
+# file system
+walkdir = "2.5.0"

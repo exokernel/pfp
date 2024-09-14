@@ -3,7 +3,7 @@ use pfp::*;
 use rayon::prelude::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process;
 use std::process::Command;
 use std::sync::atomic::AtomicBool;
@@ -81,23 +81,7 @@ fn run(
         }
 
         // 1. Get all the files in our input path
-        let mut files: Vec<String> = vec![];
-        if !files.is_empty() {
-            panic!("files is not empty");
-        }
-        //get_files(Path::new(&input_path), &extensions, &mut files)?;
-        get_files2(Path::new(&input_path), &mut |path| {
-            if extensions.as_ref().is_none()
-                || (path.extension().is_some()
-                    && extensions
-                        .as_ref()
-                        .unwrap()
-                        .contains(&path.extension().unwrap().to_str().unwrap()))
-            {
-                // only add files with the given extensions or all files if none were given
-                files.push(path.display().to_string());
-            }
-        })?;
+        let files: Vec<String> = get_files3(&input_path, &extensions)?;
 
         if should_term(&term) {
             return Ok(());
