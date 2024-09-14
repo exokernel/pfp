@@ -108,9 +108,8 @@ fn run(
         let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
         debug!("number of chunks {}", total_chunks);
 
-        files.chunks(chunk_size)
-            .enumerate()
-            .try_for_each(|(n, chunk)| -> Result<(), Box<dyn Error>> {
+        files.chunks(chunk_size).enumerate().try_for_each(
+            |(n, chunk)| -> Result<(), Box<dyn Error>> {
                 debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
                 debug!(
                     "chunk start: {} chunk_end: {}",
@@ -123,7 +122,8 @@ fn run(
                 debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk.len());
 
                 Ok(())
-            })?;
+            },
+        )?;
 
         // 3. Do any necessary postprocessing
 
