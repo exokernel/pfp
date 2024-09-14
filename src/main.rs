@@ -68,7 +68,6 @@ fn run(
     signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
     signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
 
-
     let mut command = String::from("echo");
     if script.is_some() {
         command = script.unwrap();
@@ -76,7 +75,7 @@ fn run(
 
     // Do forever
     loop {
-        print(format!("PFP: LOOP START").as_str());
+        print("PFP: LOOP START");
 
         if should_term(&term) {
             return Ok(());

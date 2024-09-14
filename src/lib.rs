@@ -30,8 +30,8 @@ fn tp(message: &str, fd: Fd) {
     // foo
     // bar
     match fd {
-        Fd::StdOut => println!("{}: {}", local.to_string(), message),
-        Fd::StdErr => eprintln!("{}: {}", local.to_string(), message),
+        Fd::StdOut => println!("{}: {}", local, message),
+        Fd::StdErr => eprintln!("{}: {}", local, message),
     }
 }
 
@@ -137,13 +137,8 @@ where
 
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
-        print(format!("PFP: CAUGHT SIGNAL! K Thx Bye!").as_str());
+        print("PFP: CAUGHT SIGNAL! K Thx Bye!");
         return true;
     }
     false
-}
-
-pub fn get_chunk(start: usize, num_items: usize, files: &Vec<String>) -> Vec<String> {
-    let end = start + num_items;
-    files[start..end].to_vec()
 }
