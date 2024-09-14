@@ -52,7 +52,7 @@ struct Opt {
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
-/// TODO: Possibly sleep after processing each chunk?
+/// TODO: Use Rayon library instead of GNU Parallel. This will make it a pure Rust solution!
 fn run(
     chunk_size: usize,
     job_slots: String,
@@ -191,14 +191,6 @@ fn main() {
     }
     //let job_slots: String = opt.job_slots.unwrap_or_else(|| "100%".to_string());
 
-    //let ext_string: String;
-    //let ext_vec: Option<Vec<&str>>;
-    //if opt.extensions.is_some() {
-    //    ext_string = opt.extensions.clone().unwrap();
-    //    ext_vec = Some(ext_string.as_str().split(",").collect());
-    //} else {
-    //    ext_vec = None;
-    //}
     let ext_vec = opt.extensions.as_ref().map(|s| s.split(",").collect());
 
     env_logger::builder()
