@@ -105,60 +105,25 @@ fn run(
         }
 
         // 2. process chunks of input in parallel
-        let num_chunks = files.len() / chunk_size;
-        let leftover = files.len() % chunk_size;
-        debug!("number of chunks {}", num_chunks);
-        debug!("leftover {}", leftover);
+        let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
+        debug!("number of chunks {}", total_chunks);
 
-        // ??? how to break input up into chunks
+        files.chunks(chunk_size)
+            .enumerate()
+            .try_for_each(|(n, chunk)| -> Result<(), Box<dyn Error>> {
+                debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
+                debug!(
+                    "chunk start: {} chunk_end: {}",
+                    n * chunk_size,
+                    n * chunk_size + chunk_size - 1
+                );
 
-        // Each chunk is a reference to slice of our Vec<String>:  &[String] &["foo", "bar",...,"baz"]
-        // chunk 1:  [0..50] 0-49 50-things
-        // chunk 2:  [50..100] 50-99 50-things
-        // chunk 3:  [100..101] 100 1-thing
+                parallelize(&command, &slots, chunk.to_vec())?;
 
-        let mut total_chunks = num_chunks;
-        if leftover != 0 {
-            total_chunks += 1;
-        }
+                debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk.len());
 
-        for n in 0..num_chunks {
-            debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk_size);
-            debug!(
-                "chunk start: {} chunk_end: {}",
-                n * chunk_size,
-                n * chunk_size + chunk_size - 1
-            );
-            let chunk = get_chunk(n * chunk_size, chunk_size, &files);
-            parallelize(&command, &slots, chunk)?;
-            debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk_size);
-            if should_term(&term) {
-                return Ok(());
-            }
-        }
-
-        // last chunk
-        if leftover != 0 {
-            debug!(
-                "chunk {}/{} ({}): START",
-                num_chunks + 1,
-                total_chunks,
-                leftover
-            );
-            debug!(
-                "chunk start: {} chunk_end: {}",
-                num_chunks * chunk_size,
-                num_chunks * chunk_size + leftover - 1
-            );
-            let chunk = get_chunk(num_chunks * chunk_size, leftover, &files);
-            parallelize(&command, &slots, chunk)?;
-            debug!(
-                "chunk {}/{} ({}): DONE",
-                num_chunks + 1,
-                total_chunks,
-                leftover
-            );
-        }
+                Ok(())
+            })?;
 
         // 3. Do any necessary postprocessing
 
