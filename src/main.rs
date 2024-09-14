@@ -54,7 +54,6 @@ struct Opt {
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and feed them in chunks to an invocation of Gnu Parallel
 /// Wait for each chunk to complete before processing the next chunk
-/// TODO: Use Rayon library instead of GNU Parallel. This will make it a pure Rust solution!
 fn run(
     chunk_size: usize,
     job_slots: Option<usize>,
