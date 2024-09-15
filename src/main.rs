@@ -68,6 +68,17 @@ fn run(
 
     let command = script.unwrap_or_else(|| "echo".to_string());
 
+    // Configure the thread pool
+    if let Some(slots) = job_slots {
+        // If job_slots is specified, use that number
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(slots)
+            .build_global()?;
+    } else {
+        // If job_slots is not specified, let Rayon use its default
+        rayon::ThreadPoolBuilder::new().build_global()?;
+    }
+
     // Do forever
     loop {
         log::info!("PFP: LOOP START");
@@ -85,17 +96,6 @@ fn run(
 
         // 2. process chunks of input in parallel
         let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
-
-        // Configure the thread pool
-        if let Some(slots) = job_slots {
-            // If job_slots is specified, use that number
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(slots)
-                .build_global()?;
-        } else {
-            // If job_slots is not specified, let Rayon use its default
-            rayon::ThreadPoolBuilder::new().build_global()?;
-        }
 
         let mut processed_chunks = 0;
 
