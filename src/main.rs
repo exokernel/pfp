@@ -27,8 +27,7 @@ struct Opt {
     extensions: Option<String>,
 
     /// Number of things to try to do in parallel at one time.
-    /// This is the number inputs that will be fed to a single invocation of
-    /// Gnu Parallel. The actual number of parallel jobs per chunk is limited
+    /// This is the number inputs that will be fed to Rayon. The actual number of parallel jobs per chunk is limited
     /// by job_slots.
     #[clap(short, long, default_value = "50")]
     chunk_size: usize,
