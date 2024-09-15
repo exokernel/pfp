@@ -1,4 +1,6 @@
 use log::debug;
+use log::error;
+use rayon::prelude::*;
 use std::error::Error;
 use std::ffi::OsStr;
 use std::fs;
@@ -65,6 +67,53 @@ pub fn parallelize(
     child.wait()?;
 
     Ok(())
+}
+
+/// Executes a command in parallel for a given chunk of file paths.
+///
+/// This function processes a chunk of file paths in parallel, executing the specified command
+/// for each file. It uses Rayon's parallel iterator to distribute the workload across multiple threads.
+///
+/// # Arguments
+///
+/// * `chunk` - A slice of `PathBuf` representing the files to be processed.
+/// * `command` - A string slice containing the command to be executed for each file.
+///
+/// # Returns
+///
+/// Returns a `Result<(), Box<dyn Error + Send + Sync>>` indicating success or failure of the operation.
+///
+/// # Errors
+///
+/// This function may return an error if there are issues executing the command for any file
+/// in the chunk. Errors are propagated from the command execution.
+///
+/// # Example
+///
+/// ```
+/// use std::path::PathBuf;
+/// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
+/// let command = "echo";
+/// parallelize_chunk(&chunk, command).expect("Failed to process chunk");
+/// ```
+pub fn parallelize_chunk(
+    chunk: &[PathBuf],
+    command: &str,
+) -> Result<(), Box<dyn Error + Send + Sync>> {
+    chunk
+        .par_iter()
+        .try_for_each(|file| -> Result<(), Box<dyn Error + Send + Sync>> {
+            let output = Command::new(command).arg(file).output()?;
+
+            if !output.status.success() {
+                error!("Command failed for file: {}", file.to_string_lossy());
+            } else {
+                debug!("Processed file: {}", file.to_string_lossy());
+                debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            }
+
+            Ok(())
+        })
 }
 
 /// Fill a vector with all the file paths under the given dir (recursive)

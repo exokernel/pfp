@@ -1,12 +1,10 @@
-use log::{debug, error};
+use log::debug;
 use pfp::*;
-use rayon::prelude::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::error::Error;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process;
-use std::process::Command;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -115,20 +113,7 @@ fn run(
                 n * chunk_size + chunk.len() - 1
             );
 
-            chunk
-                .par_iter()
-                .try_for_each(|file| -> Result<(), Box<dyn Error + Send + Sync>> {
-                    let output = Command::new(&command).arg(file).output()?;
-
-                    if !output.status.success() {
-                        error!("Command failed for file: {}", file.to_string_lossy());
-                    } else {
-                        debug!("Processed file: {}", file.to_string_lossy());
-                        debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                    }
-
-                    Ok(())
-                })?;
+            parallelize_chunk(chunk, &command)?;
 
             processed_chunks += 1;
 
