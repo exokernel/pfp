@@ -65,8 +65,8 @@ fn run(
     script: Option<String>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
-    signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
+    signal_hook::flag::register(SIGTERM, term.clone())?;
+    signal_hook::flag::register(SIGINT, term.clone())?;
 
     let command = script.unwrap_or_else(|| "echo".to_string());
 
