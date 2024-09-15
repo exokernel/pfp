@@ -1,4 +1,3 @@
-use chrono::prelude::*;
 use log::debug;
 use std::error::Error;
 use std::fs;
@@ -9,32 +8,6 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
-
-enum Fd {
-    StdOut,
-    StdErr,
-}
-
-/// Print to stdout w timestamp
-pub fn print(message: &str) {
-    tp(message, Fd::StdOut);
-}
-
-/// Print to stderr w timestamp
-pub fn eprint(message: &str) {
-    tp(message, Fd::StdErr);
-}
-
-/// Print with timestamp
-fn tp(message: &str, fd: Fd) {
-    let local: DateTime<Local> = Local::now();
-    // foo
-    // bar
-    match fd {
-        Fd::StdOut => println!("{}: {}", local, message),
-        Fd::StdErr => eprintln!("{}: {}", local, message),
-    }
-}
 
 /// Execute command in a subprocess using Gnu Parallel with given input
 /// Runs parallel instances of command with one item of input per instance
@@ -169,7 +142,7 @@ where
 
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
-        print("PFP: CAUGHT SIGNAL! K Thx Bye!");
+        log::info!("PFP: CAUGHT SIGNAL! K Thx Bye!");
         return true;
     }
     false
