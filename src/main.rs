@@ -1,3 +1,4 @@
+use clap::Parser;
 use log::debug;
 use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
@@ -7,43 +8,42 @@ use std::path::PathBuf;
 use std::process;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "pfp", about = "Parallel File Processor")]
+#[derive(Parser, Debug)]
+#[clap(name = "pfp", about = "Parallel File Processor")]
 struct Opt {
     /// Activate debug mode
-    #[structopt(short, long)]
+    #[clap(short, long)]
     debug: bool,
 
     /// Process files in input path continuously
-    #[structopt(long)]
+    #[clap(long)]
     daemon: bool,
 
     /// List of extensions delimited by commas. Only files ending in these extensions
     /// will be processed. E.g. -e "mp4,flv"
     /// If this option is not provided then all files under the input_path will be processed
-    #[structopt(short, long)]
+    #[clap(short, long)]
     extensions: Option<String>,
 
     /// Number of things to try to do in parallel at one time.
     /// This is the number inputs that will be fed to a single invocation of
     /// Gnu Parallel. The actual number of parallel jobs per chunk is limited
     /// by job_slots.
-    #[structopt(short, long, default_value = "50")]
+    #[clap(short, long, default_value = "50")]
     chunk_size: usize,
 
     /// Number of parallel job slots to use. Default to 1 slot per CPU core.
-    #[structopt(short, long)]
+    #[clap(short, long)]
     job_slots: Option<usize>,
 
     /// Seconds to sleep before processing all files in input_path again.
     /// Only used if --daemon is specified
-    #[structopt(short = "t", long = "sleep-time", default_value = "5")]
+    #[clap(short = 't', long = "sleep-time", default_value = "5")]
     sleep_time: u64,
 
     /// Shell command or script to run in parallel
-    #[structopt(short, long)]
+    #[clap(short, long)]
     script: Option<String>,
 
     /// Directory to read files from
@@ -147,7 +147,7 @@ fn run(
 
 /// Parse cli args and then do the thing
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     if opt.debug {
         std::env::set_var("RUST_LOG", "debug");
     }
