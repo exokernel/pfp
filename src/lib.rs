@@ -186,13 +186,16 @@ pub fn get_files3(
     };
 
     // TODO: parallelize this with rayon!
-    for entry in WalkDir::new(input_path)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(Result::ok)
-    {
-        if entry.file_type().is_file() && should_include(entry.path()) {
-            files.push(entry.path().to_path_buf());
+    for entry in WalkDir::new(input_path).follow_links(true).into_iter() {
+        match entry {
+            Ok(entry) => {
+                if entry.file_type().is_file() && should_include(entry.path()) {
+                    files.push(entry.path().to_path_buf());
+                }
+            }
+            Err(e) => {
+                error!("Error reading entry: {}", e);
+            }
         }
     }
 
