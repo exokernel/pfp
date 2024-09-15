@@ -9,10 +9,33 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
 
-/// Execute command in a subprocess using Gnu Parallel with given input
-/// Runs parallel instances of command with one item of input per instance
-/// E.g. input ['a','b','c'] -> parallel-exec [command 'a', command 'b', command 'c']
-//fn parallelize(command: &str, job_slots: &str, input: Vec<String>) -> Output {
+/// Executes a command in parallel using GNU Parallel with the given input.
+///
+/// This function runs parallel instances of the specified command, with one item of input per instance.
+///
+/// # Arguments
+///
+/// * `command` - A string slice containing the command to be executed in parallel.
+/// * `job_slots` - A string slice specifying the number of job slots to use. Use "100%" for maximum parallelism.
+/// * `input` - A vector of strings, where each string is an input item for a parallel instance of the command.
+///
+/// # Returns
+///
+/// Returns a `Result<(), Box<dyn Error>>` indicating success or failure of the operation.
+///
+/// # Errors
+///
+/// This function may return an error if there are issues spawning the parallel process,
+/// writing to its stdin, or waiting for it to complete.
+///
+/// # Deprecated
+///
+/// This function is deprecated and will be removed in a future version.
+/// Consider using alternative parallelization methods.
+#[deprecated(
+    since = "0.1.1",
+    note = "This function is deprecated and will be removed in a future version. Consider using alternative parallelization methods."
+)]
 pub fn parallelize(
     command: &str,
     job_slots: &str,
@@ -45,10 +68,24 @@ pub fn parallelize(
 
 /// Fill a vector with all the file paths under the given dir (recursive)
 /// that have the given extensions
-/// DONE (in get_files2): Would be better to pass a closure for adding files to the list
-/// Instead of checking if extensions is empty every iteration let the caller decide what determines
-/// if a file gets appended to the list. It could pass one closure that unconditionally adds files if
-/// the list of extensions is empty, otherwise a closure that checks the file against the extensions list
+///
+/// # Arguments
+///
+/// * `dir` - A reference to the `Path` representing the directory to search.
+/// * `extensions` - A vector of string slices representing file extensions to filter by.
+/// * `files` - A mutable reference to a `Vec<String>` where matching file paths will be added.
+///
+/// # Returns
+///
+/// Returns an `io::Result<()>` indicating success or failure of the operation.
+///
+/// # Errors
+///
+/// This function will return an error if it encounters any issues reading the directory or its entries.
+///
+/// # Note
+///
+/// If the `extensions` vector is empty, all files in the directory will be included.
 pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) -> io::Result<()> {
     if dir.is_dir() {
         for e in fs::read_dir(dir)? {
@@ -66,38 +103,6 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
         }
     }
     Ok(())
-}
-
-pub fn get_files3(
-    input_path: &Path,
-    extensions: &Option<Vec<&str>>,
-) -> Result<Vec<PathBuf>, Box<dyn Error + Send + Sync>> {
-    let mut files = Vec::new();
-
-    let should_include = |file_path: &Path| -> bool {
-        if let Some(exts) = extensions {
-            file_path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| exts.contains(&ext))
-                .unwrap_or(false)
-        } else {
-            true
-        }
-    };
-
-    // TODO: parallelize this with rayon!
-    for entry in WalkDir::new(input_path)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(Result::ok)
-    {
-        if entry.file_type().is_file() && should_include(entry.path()) {
-            files.push(entry.path().to_path_buf());
-        }
-    }
-
-    Ok(files)
 }
 
 /// Recursively traverses a directory and applies a handler function to each file found.
@@ -141,6 +146,82 @@ where
     Ok(())
 }
 
+/// Recursively retrieves files from a given directory, optionally filtering by file extensions.
+///
+/// This function traverses the directory structure starting from the provided `input_path`,
+/// collecting file paths that match the specified criteria.
+///
+/// # Arguments
+///
+/// * `input_path` - A reference to the `Path` representing the starting directory.
+/// * `extensions` - An optional `Vec<&str>` containing file extensions to filter by.
+///                  If `None`, all files are included.
+///
+/// # Returns
+///
+/// Returns a `Result` containing a `Vec<PathBuf>` of matching file paths on success,
+/// or a boxed dynamic `Error` on failure.
+///
+/// # Errors
+///
+/// This function may return an error if there are issues with file system operations
+/// or directory traversal.
+pub fn get_files3(
+    input_path: &Path,
+    extensions: &Option<Vec<&str>>,
+) -> Result<Vec<PathBuf>, Box<dyn Error + Send + Sync>> {
+    let mut files = Vec::new();
+
+    let should_include = |file_path: &Path| -> bool {
+        if let Some(exts) = extensions {
+            file_path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| exts.contains(&ext))
+                .unwrap_or(false)
+        } else {
+            true
+        }
+    };
+
+    // TODO: parallelize this with rayon!
+    for entry in WalkDir::new(input_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(Result::ok)
+    {
+        if entry.file_type().is_file() && should_include(entry.path()) {
+            files.push(entry.path().to_path_buf());
+        }
+    }
+
+    Ok(files)
+}
+
+/// Checks if a termination signal has been received.
+///
+/// This function checks the state of an atomic boolean flag to determine
+/// if a termination signal has been received.
+///
+/// # Arguments
+///
+/// * `term` - A reference to an `Arc<AtomicBool>` representing the termination flag.
+///
+/// # Returns
+///
+/// Returns `true` if a termination signal has been received, `false` otherwise.
+///
+/// # Example
+///
+/// ```
+/// use std::sync::Arc;
+/// use std::sync::atomic::AtomicBool;
+///
+/// let term_flag = Arc::new(AtomicBool::new(false));
+/// if should_term(&term_flag) {
+///     println!("Termination signal received");
+/// }
+/// ```
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
         log::info!("PFP: CAUGHT SIGNAL! K Thx Bye!");
