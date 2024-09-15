@@ -12,63 +12,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
 
-/// Executes a command in parallel using GNU Parallel with the given input.
-///
-/// This function runs parallel instances of the specified command, with one item of input per instance.
-///
-/// # Arguments
-///
-/// * `command` - A string slice containing the command to be executed in parallel.
-/// * `job_slots` - A string slice specifying the number of job slots to use. Use "100%" for maximum parallelism.
-/// * `input` - A vector of strings, where each string is an input item for a parallel instance of the command.
-///
-/// # Returns
-///
-/// Returns a `Result<(), Box<dyn Error>>` indicating success or failure of the operation.
-///
-/// # Errors
-///
-/// This function may return an error if there are issues spawning the parallel process,
-/// writing to its stdin, or waiting for it to complete.
-///
-/// # Deprecated
-///
-/// This function is deprecated and will be removed in a future version.
-/// Consider using alternative parallelization methods.
-#[deprecated(
-    since = "0.1.1",
-    note = "This function is deprecated and will be removed in a future version. Consider using alternative parallelization methods."
-)]
-pub fn parallelize(
-    command: &str,
-    job_slots: &str,
-    input: Vec<String>,
-) -> Result<(), Box<dyn Error>> {
-    let mut parallel_args: Vec<String> = vec![];
-    if job_slots != "100%" {
-        parallel_args.push(format!("-j{}", job_slots));
-    }
-    parallel_args.push(command.to_owned());
-
-    debug!("parallelizing with {} job slots", job_slots);
-
-    let mut child = Command::new("parallel")
-        .args(parallel_args)
-        .stdin(Stdio::piped())
-        .spawn()?;
-
-    let mut stdin = child.stdin.take().ok_or("Failed to open stdin")?;
-    std::thread::spawn(move || {
-        stdin
-            .write_all(input.join("\n").as_bytes())
-            .expect("Failed to write to stdin");
-    });
-
-    child.wait()?;
-
-    Ok(())
-}
-
 /// Executes a command in parallel for a given chunk of file paths.
 ///
 /// This function processes a chunk of file paths in parallel, executing the specified command
