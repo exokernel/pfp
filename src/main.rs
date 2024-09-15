@@ -74,14 +74,14 @@ fn run(
 
     // Do forever
     loop {
-        print("PFP: LOOP START");
+        log::info!("PFP: LOOP START");
 
         if should_term(&term) {
             return Ok(());
         }
 
         // 1. Get all the files in our input path
-        let files: Vec<String> = get_files3(&input_path, &extensions)?;
+        let files: Vec<PathBuf> = get_files3(&input_path, &extensions)?;
 
         if should_term(&term) {
             return Ok(());
@@ -124,9 +124,9 @@ fn run(
                     let output = Command::new(&command).arg(file).output()?;
 
                     if !output.status.success() {
-                        error!("Command failed for file: {}", file);
+                        error!("Command failed for file: {}", file.to_string_lossy());
                     } else {
-                        debug!("Processed file: {}", file);
+                        debug!("Processed file: {}", file.to_string_lossy());
                         debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
                     }
 
@@ -190,7 +190,7 @@ fn main() {
         opt.input_path,
         opt.script,
     ) {
-        eprint(format!("Oh noes! {}", e).as_str());
+        log::error!("Oh noes! {}", e);
         process::exit(1);
     }
 }

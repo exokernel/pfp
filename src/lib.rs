@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -98,7 +98,7 @@ pub fn get_files(dir: &Path, extensions: &Vec<&str>, files: &mut Vec<String>) ->
 pub fn get_files3(
     input_path: &Path,
     extensions: &Option<Vec<&str>>,
-) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+) -> Result<Vec<PathBuf>, Box<dyn Error + Send + Sync>> {
     let mut files = Vec::new();
 
     let should_include = |file_path: &Path| -> bool {
@@ -119,7 +119,7 @@ pub fn get_files3(
         .filter_map(Result::ok)
     {
         if entry.file_type().is_file() && should_include(entry.path()) {
-            files.push(entry.path().to_string_lossy().into_owned());
+            files.push(entry.path().to_path_buf());
         }
     }
 
