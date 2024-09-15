@@ -86,6 +86,7 @@ pub fn get_files3(
         }
     };
 
+    // TODO: parallelize this with rayon!
     for entry in WalkDir::new(input_path)
         .follow_links(true)
         .into_iter()
