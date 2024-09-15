@@ -4,6 +4,8 @@
 
 Parallel File Processor (PFP) is a Rust-based utility that recursively reads a directory and executes a specified command on each file in parallel. It's designed for efficient processing of large numbers of files by leveraging parallel execution.
 
+This is useful when you have a script that does some processing on a single file but you want to process a lot of files under some directory efficiently. The original use case was for running a script to compress, encrypt, and upload files to a cloud storage service, on a very large number of video files.
+
 ## Features
 
 - Recursive directory traversal
