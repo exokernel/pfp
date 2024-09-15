@@ -179,8 +179,8 @@ fn main() {
 
     debug!("{:?}", opt);
     debug!("Parsed extensions: {:?}", ext_vec);
-    if opt.job_slots.is_some() {
-        debug!("job_slots = {}", opt.job_slots.unwrap());
+    if let Some(slots) = opt.job_slots {
+        debug!("job_slots = {}", slots);
     }
 
     if let Err(e) = run(
