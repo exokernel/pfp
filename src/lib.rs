@@ -1,5 +1,6 @@
 use log::debug;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::io::Write;
@@ -168,7 +169,7 @@ where
 /// or directory traversal.
 pub fn get_files3(
     input_path: &Path,
-    extensions: &Option<Vec<&str>>,
+    extensions: &Option<Vec<&OsStr>>,
 ) -> Result<Vec<PathBuf>, Box<dyn Error + Send + Sync>> {
     let mut files = Vec::new();
 
@@ -176,7 +177,6 @@ pub fn get_files3(
         if let Some(exts) = extensions {
             file_path
                 .extension()
-                .and_then(|ext| ext.to_str())
                 .map(|ext| exts.contains(&ext))
                 .unwrap_or(false)
         } else {

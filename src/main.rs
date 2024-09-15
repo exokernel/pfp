@@ -3,6 +3,7 @@ use pfp::*;
 use rayon::prelude::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::error::Error;
+use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process;
 use std::process::Command;
@@ -59,7 +60,7 @@ fn run(
     job_slots: Option<usize>,
     sleep_time: u64,
     daemon: bool,
-    extensions: Option<Vec<&str>>,
+    extensions: Option<Vec<&OsStr>>,
     input_path: PathBuf,
     script: Option<String>,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -167,13 +168,20 @@ fn main() {
         std::env::set_var("RUST_LOG", "debug");
     }
 
-    let ext_vec = opt.extensions.as_ref().map(|s| s.split(",").collect());
+    let ext_vec = opt.extensions.as_ref().map(|s| {
+        s.split(",")
+            .map(|ext| ext.trim())
+            .filter(|ext| !ext.is_empty())
+            .map(OsStr::new)
+            .collect::<Vec<&OsStr>>()
+    });
 
     env_logger::builder()
         .target(env_logger::Target::Stdout)
         .init();
 
     debug!("{:?}", opt);
+    debug!("Parsed extensions: {:?}", ext_vec);
     if opt.job_slots.is_some() {
         debug!("job_slots = {}", opt.job_slots.unwrap());
     }
