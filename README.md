@@ -28,7 +28,7 @@ pfp [OPTIONS] <input_path>
 - `-c, --chunk-size <CHUNK_SIZE>`: Number of files to process in parallel at once (default: 50)
 - `-j, --job-slots <JOB_SLOTS>`: Number of parallel job slots to use
 - `-t, --sleep-time <SLEEP_TIME>`: Seconds to sleep before reprocessing in daemon mode (default: 5)
-- `-s, --script <SCRIPT>`: Shell command or script to run on each file
+- `-s, --script <SCRIPT>`: Script to run on each file
 
 ### Examples
 
@@ -54,7 +54,3 @@ TODO: Add installation instructions
 ## Contributing
 
 Contributions are welcome! This was one of my first real Rust projects, so suggestions for improvement are appreciated. Please feel free to submit issues or pull requests.
-
-## Note
-
-This was one of my first real Rust projects so it might not be the greatest Rust ever. Suggestions for improvement welcome!
