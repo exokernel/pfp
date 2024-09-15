@@ -89,7 +89,6 @@ fn run(
         let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
 
         // Configure the thread pool
-        // In your run function:
         if let Some(slots) = job_slots {
             // If job_slots is specified, use that number
             rayon::ThreadPoolBuilder::new()
@@ -168,6 +167,13 @@ fn main() {
         std::env::set_var("RUST_LOG", "debug");
     }
 
+    // Process the extensions input:
+    // 1. Split the comma-separated string into individual extensions
+    // 2. Trim whitespace from each extension
+    // 3. Remove any empty extensions
+    // 4. Convert each extension to an OsStr
+    // 5. Collect the results into a Vec<&OsStr>
+    // If no extensions were provided, ext_vec will be None
     let ext_vec = opt.extensions.as_ref().map(|s| {
         s.split(",")
             .map(|ext| ext.trim())
