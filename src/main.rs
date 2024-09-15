@@ -67,10 +67,7 @@ fn run(
     signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
     signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
 
-    let mut command = String::from("echo");
-    if script.is_some() {
-        command = script.unwrap();
-    }
+    let command = script.unwrap_or_else(|| "echo".to_string());
 
     // Do forever
     loop {
