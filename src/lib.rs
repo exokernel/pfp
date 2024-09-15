@@ -155,7 +155,7 @@ where
 /// # Arguments
 ///
 /// * `input_path` - A reference to the `Path` representing the starting directory.
-/// * `extensions` - An optional `Vec<&str>` containing file extensions to filter by.
+/// * `extensions` - An optional `Vec<&OsStr>` containing file extensions to filter by.
 ///                  If `None`, all files are included.
 ///
 /// # Returns
