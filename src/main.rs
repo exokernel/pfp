@@ -98,6 +98,8 @@ fn run(
         let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
 
         let mut processed_chunks = 0;
+        let mut processed_files = 0;
+        let mut errored_files = 0;
 
         debug!("command: {}", command);
 
@@ -113,9 +115,11 @@ fn run(
                 n * chunk_size + chunk.len() - 1
             );
 
-            parallelize_chunk(chunk, &command)?;
+            let (processed, errored) = parallelize_chunk(chunk, &command)?;
 
             processed_chunks += 1;
+            processed_files += processed;
+            errored_files += errored;
 
             debug!(
                 "chunk {}/{} ({}): DONE",
@@ -130,6 +134,8 @@ fn run(
             processed_chunks, total_chunks
         );
         debug!("Total number of files {}", files.len());
+        debug!("Total number of processed files {}", processed_files);
+        debug!("Total number of errored files {}", errored_files);
 
         // 3. Do any necessary postprocessing
 

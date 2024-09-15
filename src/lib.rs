@@ -7,7 +7,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
 
@@ -41,7 +41,10 @@ use walkdir::WalkDir;
 pub fn parallelize_chunk(
     chunk: &[PathBuf],
     command: &str,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> Result<(usize, usize), Box<dyn Error + Send + Sync>> {
+    let processed = AtomicUsize::new(0);
+    let errors = AtomicUsize::new(0);
+
     chunk
         .par_iter()
         .try_for_each(|file| -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -49,13 +52,20 @@ pub fn parallelize_chunk(
 
             if !output.status.success() {
                 error!("Command failed for file: {}", file.to_string_lossy());
+                errors.fetch_add(1, Ordering::Relaxed);
             } else {
                 debug!("Processed file: {}", file.to_string_lossy());
                 debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                processed.fetch_add(1, Ordering::Relaxed);
             }
 
             Ok(())
-        })
+        })?;
+
+    Ok((
+        processed.load(Ordering::Relaxed),
+        errors.load(Ordering::Relaxed),
+    ))
 }
 
 /// Fill a vector with all the file paths under the given dir (recursive)
