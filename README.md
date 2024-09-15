@@ -51,7 +51,12 @@ pfp -s /path/to/script.sh /path/to/videos
 
 ## Installation
 
-TODO: Add installation instructions
+For now you can build the binary yourself. I'll try to get an actual release out soon.
+
+* Clone the repo
+* Install rust with rustup, super easy! (https://rustup.rs/)
+* Go into the project and do: `cargo build --release`
+* Find the optimized `pfp` binary at `./target/release/pfp` and go nuts!
 
 ## Contributing
 
