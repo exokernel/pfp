@@ -1,14 +1,12 @@
-use log::debug;
-use log::error;
+use log::{debug, error};
 use rayon::prelude::*;
 use std::error::Error;
 use std::ffi::OsStr;
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::{fs, io};
 use walkdir::WalkDir;
 
 /// Executes a command in parallel for a given chunk of file paths.
