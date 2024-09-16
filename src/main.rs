@@ -137,13 +137,14 @@ fn run(
         debug!("Total number of errored files {}", errored_files);
 
         // 3. Do any necessary postprocessing
+        log::info!("PFP: Finished processing all files in input-path.");
 
         if !daemon || should_term(&term) {
             return Ok(());
         }
 
         log::info!(
-            "PFP: Finished processing all files in input-path. Sleeping for {} seconds...",
+            "Sleeping for {} seconds...",
             sleep_time
         );
         std::thread::sleep(std::time::Duration::from_secs(sleep_time));
