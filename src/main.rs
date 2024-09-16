@@ -143,10 +143,7 @@ fn run(
             return Ok(());
         }
 
-        log::info!(
-            "Sleeping for {} seconds...",
-            sleep_time
-        );
+        log::info!("Sleeping for {} seconds...", sleep_time);
         std::thread::sleep(std::time::Duration::from_secs(sleep_time));
     }
 }
