@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use log::{debug, error};
 use rayon::prelude::*;
-use std::error::Error;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -49,32 +49,33 @@ pub fn parallelize_chunk(
     chunk: &[PathBuf],
     command: &str,
     term: &Arc<AtomicBool>,
-) -> Result<(usize, usize), Box<dyn Error + Send + Sync>> {
+) -> Result<(usize, usize)> {
     let processed = AtomicUsize::new(0);
     let errors = AtomicUsize::new(0);
 
-    chunk
-        .par_iter()
-        .try_for_each(|file| -> Result<(), Box<dyn Error + Send + Sync>> {
-            if should_term(term) {
-                log::info!("Cancelling task for file: {}", file.to_string_lossy());
-                return Ok(());
-            }
+    chunk.par_iter().try_for_each(|file| -> Result<()> {
+        if should_term(term) {
+            log::info!("Cancelling task for file: {}", file.to_string_lossy());
+            return Ok(());
+        }
 
-            let output = Command::new(command).arg(file).output()?;
+        let output = Command::new(command)
+            .arg(file)
+            .output()
+            .with_context(|| format!("Failed to execute command for file: {}", file.display()))?;
 
-            if output.status.success() {
-                debug!("Processed file: {}", file.to_string_lossy());
-                debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                processed.fetch_add(1, Ordering::Relaxed);
-            } else {
-                error!("Command failed for file: {}", file.to_string_lossy());
-                error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-                errors.fetch_add(1, Ordering::Relaxed);
-            }
+        if output.status.success() {
+            debug!("Processed file: {}", file.to_string_lossy());
+            debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+            processed.fetch_add(1, Ordering::Relaxed);
+        } else {
+            error!("Command failed for file: {}", file.to_string_lossy());
+            error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+            errors.fetch_add(1, Ordering::Relaxed);
+        }
 
-            Ok(())
-        })?;
+        Ok(())
+    })?;
 
     Ok((
         processed.load(Ordering::Relaxed),
@@ -182,10 +183,7 @@ where
 ///
 /// This function may return an error if there are issues with file system operations
 /// or directory traversal.
-pub fn get_files3(
-    input_path: &Path,
-    extensions: &Option<Vec<&OsStr>>,
-) -> Result<Vec<PathBuf>, Box<dyn Error + Send + Sync>> {
+pub fn get_files3(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     let should_include = |file_path: &Path| -> bool {
@@ -201,23 +199,15 @@ pub fn get_files3(
 
     // Check if the input path exists before walking
     if !input_path.exists() {
-        return Err(Box::new(io::Error::new(
-            io::ErrorKind::NotFound,
-            "Input path does not exist",
-        )));
+        return Err(anyhow::anyhow!("Input path does not exist"));
     }
 
     // TODO: parallelize this with rayon!
     for entry in WalkDir::new(input_path).into_iter() {
-        match entry {
-            Ok(entry) => {
-                if entry.file_type().is_file() && should_include(entry.path()) {
-                    files.push(entry.path().to_path_buf());
-                }
-            }
-            Err(e) => {
-                error!("Error reading entry: {}", e);
-            }
+        let entry =
+            entry.with_context(|| format!("Failed to read entry in {}", input_path.display()))?;
+        if entry.file_type().is_file() && should_include(entry.path()) {
+            files.push(entry.path().to_path_buf());
         }
     }
 

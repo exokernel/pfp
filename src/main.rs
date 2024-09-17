@@ -1,8 +1,8 @@
+use anyhow::Result;
 use clap::Parser;
 use log::debug;
 use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
-use std::error::Error;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process;
@@ -60,7 +60,7 @@ fn run(
     extensions: Option<Vec<&OsStr>>,
     input_path: PathBuf,
     script: Option<String>,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> Result<()> {
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(SIGTERM, term.clone())?;
     signal_hook::flag::register(SIGINT, term.clone())?;
@@ -189,7 +189,7 @@ fn main() {
         opt.input_path,
         opt.script,
     ) {
-        log::error!("Oh noes! {}", e);
+        log::error!("Application error: {:#}", e);
         process::exit(1);
     }
 }
