@@ -39,6 +39,7 @@ use walkdir::WalkDir;
 pub fn parallelize_chunk(
     chunk: &[PathBuf],
     command: &str,
+    term: &Arc<AtomicBool>,
 ) -> Result<(usize, usize), Box<dyn Error + Send + Sync>> {
     let processed = AtomicUsize::new(0);
     let errors = AtomicUsize::new(0);
@@ -46,6 +47,11 @@ pub fn parallelize_chunk(
     chunk
         .par_iter()
         .try_for_each(|file| -> Result<(), Box<dyn Error + Send + Sync>> {
+            if should_term(term) {
+                log::info!("Cancelling task for file: {}", file.to_string_lossy());
+                return Ok(());
+            }
+
             let output = Command::new(command).arg(file).output()?;
 
             if !output.status.success() {
@@ -184,7 +190,7 @@ pub fn get_files3(
     };
 
     // TODO: parallelize this with rayon!
-    for entry in WalkDir::new(input_path).follow_links(true).into_iter() {
+    for entry in WalkDir::new(input_path).into_iter() {
         match entry {
             Ok(entry) => {
                 if entry.file_type().is_file() && should_include(entry.path()) {

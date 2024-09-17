@@ -114,7 +114,7 @@ fn run(
                 n * chunk_size + chunk.len() - 1
             );
 
-            let (processed, errored) = parallelize_chunk(chunk, &command)?;
+            let (processed, errored) = parallelize_chunk(chunk, &command, &term)?;
 
             processed_chunks += 1;
             processed_files += processed;
