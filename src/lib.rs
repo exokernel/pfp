@@ -25,7 +25,8 @@ use walkdir::WalkDir;
 ///
 /// Returns a `Result<(usize, usize), Box<dyn Error + Send + Sync>>` indicating success or failure of the operation.
 ///
-/// The tuple contains the number of files successfully processed and the number of files that encountered errors.
+/// The tuple contains the number of files successfully processed and the number of files that encountered errors during
+/// processing.
 ///
 /// # Errors
 ///
@@ -64,6 +65,7 @@ pub fn parallelize_chunk(
 
             if !output.status.success() {
                 error!("Command failed for file: {}", file.to_string_lossy());
+                error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
                 errors.fetch_add(1, Ordering::Relaxed);
             } else {
                 debug!("Processed file: {}", file.to_string_lossy());
