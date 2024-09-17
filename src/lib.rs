@@ -23,7 +23,7 @@ use walkdir::WalkDir;
 ///
 /// # Returns
 ///
-/// Returns a `Result<(usize, usize), Box<dyn Error + Send + Sync>>` indicating success or failure of the operation.
+/// Returns a `Result<(usize, usize)>` indicating success or failure of the operation.
 ///
 /// The tuple contains the number of files successfully processed and the number of files that encountered errors during
 /// processing.
@@ -176,8 +176,7 @@ where
 ///
 /// # Returns
 ///
-/// Returns a `Result` containing a `Vec<PathBuf>` of matching file paths on success,
-/// or a boxed dynamic `Error` on failure.
+/// Returns a `Result` containing a `Vec<PathBuf>` of matching file paths.
 ///
 /// # Errors
 ///
