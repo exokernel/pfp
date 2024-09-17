@@ -23,7 +23,9 @@ use walkdir::WalkDir;
 ///
 /// # Returns
 ///
-/// Returns a `Result<(), Box<dyn Error + Send + Sync>>` indicating success or failure of the operation.
+/// Returns a `Result<(usize, usize), Box<dyn Error + Send + Sync>>` indicating success or failure of the operation.
+///
+/// The tuple contains the number of files successfully processed and the number of files that encountered errors.
 ///
 /// # Errors
 ///
@@ -39,7 +41,8 @@ use walkdir::WalkDir;
 /// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
 /// let command = "echo";
 /// let term = Arc::new(AtomicBool::new(false));
-/// parallelize_chunk(&chunk, command, &term).expect("Failed to process chunk");
+/// let (num_processed, num_errored) = parallelize_chunk(&chunk, command, &term).expect("Failed to process chunk");
+/// println!("Processed: {}, Errored: {}", num_processed, num_errored);
 /// ```
 pub fn parallelize_chunk(
     chunk: &[PathBuf],
