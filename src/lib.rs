@@ -63,14 +63,14 @@ pub fn parallelize_chunk(
 
             let output = Command::new(command).arg(file).output()?;
 
-            if !output.status.success() {
-                error!("Command failed for file: {}", file.to_string_lossy());
-                error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-                errors.fetch_add(1, Ordering::Relaxed);
-            } else {
+            if output.status.success() {
                 debug!("Processed file: {}", file.to_string_lossy());
                 debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
                 processed.fetch_add(1, Ordering::Relaxed);
+            } else {
+                error!("Command failed for file: {}", file.to_string_lossy());
+                error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+                errors.fetch_add(1, Ordering::Relaxed);
             }
 
             Ok(())
