@@ -18,6 +18,8 @@ use walkdir::WalkDir;
 ///
 /// * `chunk` - A slice of `PathBuf` representing the files to be processed.
 /// * `command` - A string slice containing the command to be executed for each file.
+/// * `term` - A reference to an `Arc<AtomicBool>` representing the termination flag. Allows tasks to return early if a
+///            termination signal is received.
 ///
 /// # Returns
 ///
@@ -34,7 +36,8 @@ use walkdir::WalkDir;
 /// use std::path::PathBuf;
 /// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
 /// let command = "echo";
-/// parallelize_chunk(&chunk, command).expect("Failed to process chunk");
+/// let term = Arc::new(AtomicBool::new(false));
+/// parallelize_chunk(&chunk, command, &term).expect("Failed to process chunk");
 /// ```
 pub fn parallelize_chunk(
     chunk: &[PathBuf],
