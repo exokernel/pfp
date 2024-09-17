@@ -35,6 +35,7 @@ use walkdir::WalkDir;
 /// ```
 /// use std::path::PathBuf;
 /// use std::sync::atomic::AtomicBool;
+/// use std::sync::Arc;
 /// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
 /// let command = "echo";
 /// let term = Arc::new(AtomicBool::new(false));
