@@ -1,11 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use log::debug;
 use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::ffi::OsStr;
+use std::fs;
 use std::path::PathBuf;
-use std::process;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -41,16 +41,16 @@ struct Opt {
     #[clap(short = 't', long = "sleep-time", default_value = "5")]
     sleep_time: u64,
 
-    /// Shell command or script to run in parallel
+    /// Shell script to run in parallel
     #[clap(short, long)]
-    script: Option<String>,
+    script: Option<PathBuf>,
 
     /// Directory to read files from
     input_path: PathBuf,
 }
 
 /// Do the thing forever unless interrupted.
-/// Read all files in the input path and feed them in chunks to rayon to execute in parallel
+/// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
 fn run(
     chunk_size: usize,
@@ -59,13 +59,14 @@ fn run(
     daemon: bool,
     extensions: Option<Vec<&OsStr>>,
     input_path: PathBuf,
-    script: Option<String>,
+    script: Option<PathBuf>,
 ) -> Result<()> {
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(SIGTERM, term.clone())?;
     signal_hook::flag::register(SIGINT, term.clone())?;
 
-    let command = script.unwrap_or_else(|| "echo".to_string());
+    // If script was provided, use that. Otherwise, just use "echo".
+    let script_path = script.as_deref();
 
     // Configure the thread pool
     if let Some(slots) = job_slots {
@@ -87,7 +88,7 @@ fn run(
         }
 
         // 1. Get all the files in our input path
-        let files: Vec<PathBuf> = get_files3(&input_path, &extensions)?;
+        let files: Vec<PathBuf> = get_files(&input_path, &extensions)?;
 
         if should_term(&term) {
             return Ok(());
@@ -100,7 +101,9 @@ fn run(
         let mut processed_files = 0;
         let mut errored_files = 0;
 
-        debug!("command: {}", command);
+        if script_path.is_some() {
+            log::debug!("Using script: {:?}", script_path);
+        }
 
         for (n, chunk) in files.chunks(chunk_size).enumerate() {
             if should_term(&term) {
@@ -114,7 +117,7 @@ fn run(
                 n * chunk_size + chunk.len() - 1
             );
 
-            let (processed, errored) = parallelize_chunk(chunk, &command, &term)?;
+            let (processed, errored) = parallelize_chunk(chunk, script_path, &term)?;
 
             processed_chunks += 1;
             processed_files += processed;
@@ -149,10 +152,45 @@ fn run(
 }
 
 /// Parse cli args and then do the thing
-fn main() {
+fn main() -> Result<()> {
     let opt = Opt::parse();
     if opt.debug {
         std::env::set_var("RUST_LOG", "debug");
+    }
+
+    // Validate script if provided
+    if let Some(script_path) = &opt.script {
+        if !script_path.exists() {
+            return Err(anyhow::anyhow!(
+                "Script file does not exist: {:?}",
+                script_path
+            ));
+        }
+
+        // Unix-specific permission checks
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let metadata = fs::metadata(script_path)
+                .with_context(|| format!("Failed to get metadata for script: {:?}", script_path))?;
+            let permissions = metadata.permissions();
+
+            // Check if the script is readable
+            if permissions.mode() & 0o444 == 0 {
+                return Err(anyhow::anyhow!(
+                    "Script file is not readable: {:?}",
+                    script_path
+                ));
+            }
+
+            // Check if the script is executable
+            if permissions.mode() & 0o111 == 0 {
+                return Err(anyhow::anyhow!(
+                    "Script file is not executable: {:?}",
+                    script_path
+                ));
+            }
+        }
     }
 
     // Process the extensions input:
@@ -180,7 +218,7 @@ fn main() {
         debug!("job_slots = {}", slots);
     }
 
-    if let Err(e) = run(
+    run(
         opt.chunk_size,
         opt.job_slots,
         opt.sleep_time,
@@ -188,8 +226,7 @@ fn main() {
         ext_vec,
         opt.input_path,
         opt.script,
-    ) {
-        log::error!("Application error: {:#}", e);
-        process::exit(1);
-    }
+    )?;
+
+    Ok(())
 }
