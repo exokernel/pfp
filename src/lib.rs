@@ -199,6 +199,14 @@ pub fn get_files3(
         }
     };
 
+    // Check if the input path exists before walking
+    if !input_path.exists() {
+        return Err(Box::new(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Input path does not exist",
+        )));
+    }
+
     // TODO: parallelize this with rayon!
     for entry in WalkDir::new(input_path).into_iter() {
         match entry {
@@ -214,6 +222,75 @@ pub fn get_files3(
     }
 
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{self, File};
+    use tempfile::TempDir;
+
+    fn create_test_directory() -> TempDir {
+        let temp_dir = TempDir::new().unwrap();
+        let base_path = temp_dir.path();
+
+        // Create some test files and directories
+        fs::create_dir(base_path.join("subdir")).unwrap();
+        File::create(base_path.join("file1.txt")).unwrap();
+        File::create(base_path.join("file2.jpg")).unwrap();
+        File::create(base_path.join("file3.png")).unwrap();
+        File::create(base_path.join("subdir").join("file4.txt")).unwrap();
+        File::create(base_path.join("subdir").join("file5.jpg")).unwrap();
+
+        temp_dir
+    }
+
+    #[test]
+    fn test_get_files3_with_extensions() {
+        let temp_dir = create_test_directory();
+        let extensions = Some(vec![OsStr::new("txt"), OsStr::new("jpg")]);
+
+        let files = get_files3(temp_dir.path(), &extensions).unwrap();
+
+        assert_eq!(files.len(), 4);
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "file1.txt"));
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "file2.jpg"));
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "file4.txt"));
+        assert!(files.iter().any(|f| f.file_name().unwrap() == "file5.jpg"));
+    }
+
+    #[test]
+    fn test_get_files3_without_extensions() {
+        let temp_dir = create_test_directory();
+        let extensions = None;
+
+        let files = get_files3(temp_dir.path(), &extensions).unwrap();
+
+        assert_eq!(files.len(), 5);
+    }
+
+    #[test]
+    fn test_get_files3_empty_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let extensions = None;
+
+        let files = get_files3(temp_dir.path(), &extensions).unwrap();
+
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_get_files3_non_existent_directory() {
+        let non_existent_path = Path::new("/this/path/does/not/exist");
+        let extensions = None;
+
+        let result = get_files3(non_existent_path, &extensions);
+
+        assert!(result.is_err());
+    }
+
+    // Additional tests can be added here, such as testing for permission errors,
+    // or more complex directory structures.
 }
 
 /// Checks if a termination signal has been received.
