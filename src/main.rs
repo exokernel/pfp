@@ -5,7 +5,7 @@ use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::ffi::OsStr;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -58,15 +58,12 @@ fn run(
     sleep_time: u64,
     daemon: bool,
     extensions: Option<Vec<&OsStr>>,
-    input_path: PathBuf,
-    script: Option<PathBuf>,
+    input_path: &Path,
+    script: Option<&Path>,
 ) -> Result<()> {
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(SIGTERM, term.clone())?;
     signal_hook::flag::register(SIGINT, term.clone())?;
-
-    // If script was provided, use that. Otherwise, just use "echo".
-    let script_path = script.as_deref();
 
     // Configure the thread pool
     if let Some(slots) = job_slots {
@@ -88,7 +85,7 @@ fn run(
         }
 
         // 1. Get all the files in our input path
-        let files: Vec<PathBuf> = get_files(&input_path, &extensions)?;
+        let files: Vec<PathBuf> = get_files(input_path, &extensions)?;
 
         if should_term(&term) {
             return Ok(());
@@ -101,8 +98,8 @@ fn run(
         let mut processed_files = 0;
         let mut errored_files = 0;
 
-        if script_path.is_some() {
-            log::debug!("Using script: {:?}", script_path);
+        if script.is_some() {
+            log::debug!("Using script: {:?}", script);
         }
 
         for (n, chunk) in files.chunks(chunk_size).enumerate() {
@@ -117,7 +114,7 @@ fn run(
                 n * chunk_size + chunk.len() - 1
             );
 
-            let (processed, errored) = parallelize_chunk(chunk, script_path, &term)?;
+            let (processed, errored) = parallelize_chunk(chunk, script, &term)?;
 
             processed_chunks += 1;
             processed_files += processed;
@@ -224,8 +221,8 @@ fn main() -> Result<()> {
         opt.sleep_time,
         opt.daemon,
         ext_vec,
-        opt.input_path,
-        opt.script,
+        &opt.input_path,
+        opt.script.as_deref(),
     )?;
 
     Ok(())
