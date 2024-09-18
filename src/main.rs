@@ -158,7 +158,7 @@ fn main() -> Result<()> {
     if let Some(script_path) = &opt.script {
         if !script_path.exists() {
             return Err(anyhow::anyhow!(
-                "Script file does not exist: {:?}",
+                "Script path does not exist: {:?}",
                 script_path
             ));
         }
