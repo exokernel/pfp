@@ -78,7 +78,7 @@ pub fn parallelize_chunk(
             }
             None => {
                 // Directly print the file name to stdout
-                println!("Would process file: {}", file.display());
+                log::info!("Would process file: {}", file.display());
                 processed.fetch_add(1, Ordering::Relaxed);
             }
         }
