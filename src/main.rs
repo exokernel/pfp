@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use log::debug;
 use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::ffi::OsStr;
@@ -107,8 +106,8 @@ fn run(
                 return Ok(());
             }
 
-            debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
-            debug!(
+            log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
+            log::debug!(
                 "chunk start: {} chunk_end: {}",
                 n * chunk_size,
                 n * chunk_size + chunk.len() - 1
@@ -120,7 +119,7 @@ fn run(
             processed_files += processed;
             errored_files += errored;
 
-            debug!(
+            log::debug!(
                 "chunk {}/{} ({}): DONE",
                 processed_chunks,
                 total_chunks,
@@ -128,13 +127,14 @@ fn run(
             );
         }
 
-        debug!(
+        log::debug!(
             "Processed {} out of {} chunks",
-            processed_chunks, total_chunks
+            processed_chunks,
+            total_chunks
         );
-        debug!("Total number of files {}", files.len());
-        debug!("Total number of processed files {}", processed_files);
-        debug!("Total number of errored files {}", errored_files);
+        log::debug!("Total number of files {}", files.len());
+        log::debug!("Total number of processed files {}", processed_files);
+        log::debug!("Total number of errored files {}", errored_files);
 
         // 3. Do any necessary postprocessing
         log::info!("PFP: Finished processing all files in input-path.");
@@ -209,10 +209,10 @@ fn main() -> Result<()> {
         .target(env_logger::Target::Stdout)
         .init();
 
-    debug!("{:?}", opt);
-    debug!("Parsed extensions: {:?}", ext_vec);
+    log::debug!("{:?}", opt);
+    log::debug!("Parsed extensions: {:?}", ext_vec);
     if let Some(slots) = opt.job_slots {
-        debug!("job_slots = {}", slots);
+        log::debug!("job_slots = {}", slots);
     }
 
     run(
