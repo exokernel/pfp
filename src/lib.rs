@@ -53,7 +53,7 @@ pub fn parallelize_chunk(
 
     chunk.par_iter().try_for_each(|file| -> Result<()> {
         if should_term(term) {
-            log::info!("Cancelling task for file: {}", file.to_string_lossy());
+            log::info!("Cancelling task for file: {}", file.display());
             return Ok(());
         }
 
