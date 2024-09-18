@@ -1,9 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
 use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::ffi::OsStr;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -163,30 +162,11 @@ fn main() -> Result<()> {
                 script_path
             ));
         }
-
-        // Unix-specific permission checks
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let metadata = fs::metadata(script_path)
-                .with_context(|| format!("Failed to get metadata for script: {:?}", script_path))?;
-            let permissions = metadata.permissions();
-
-            // Check if the script is readable
-            if permissions.mode() & 0o444 == 0 {
-                return Err(anyhow::anyhow!(
-                    "Script file is not readable: {:?}",
-                    script_path
-                ));
-            }
-
-            // Check if the script is executable
-            if permissions.mode() & 0o111 == 0 {
-                return Err(anyhow::anyhow!(
-                    "Script file is not executable: {:?}",
-                    script_path
-                ));
-            }
+        if !script_path.is_file() {
+            return Err(anyhow::anyhow!(
+                "Script path is not a file: {:?}",
+                script_path
+            ));
         }
     }
 
