@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use log::{debug, error};
 use rayon::prelude::*;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -68,12 +67,12 @@ pub fn parallelize_chunk(
                     })?;
 
                 if output.status.success() {
-                    debug!("Processed file: {}", file.to_string_lossy());
-                    debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                    log::debug!("Processed file: {}", file.to_string_lossy());
+                    log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
                     processed.fetch_add(1, Ordering::Relaxed);
                 } else {
-                    error!("Script failed for file: {}", file.to_string_lossy());
-                    error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+                    log::error!("Script failed for file: {}", file.to_string_lossy());
+                    log::error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
                     errored.fetch_add(1, Ordering::Relaxed);
                 }
             }
