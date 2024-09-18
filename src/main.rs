@@ -47,9 +47,88 @@ struct Opt {
     input_path: PathBuf,
 }
 
+fn setup_signal_handling() -> Result<Arc<AtomicBool>> {
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(SIGTERM, term.clone())?;
+    signal_hook::flag::register(SIGINT, term.clone())?;
+    Ok(term)
+}
+
+fn configure_thread_pool(job_slots: Option<usize>) -> Result<()> {
+    if let Some(slots) = job_slots {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(slots)
+            .build_global()?;
+    } else {
+        rayon::ThreadPoolBuilder::new().build_global()?;
+    }
+    Ok(())
+}
+
+fn process_files(
+    chunk_size: usize,
+    extensions: &Option<Vec<&OsStr>>,
+    input_path: &Path,
+    script: Option<&Path>,
+    term: &Arc<AtomicBool>,
+) -> Result<()> {
+    let files = get_files(input_path, extensions)?;
+
+    if should_term(term) {
+        return Ok(());
+    }
+
+    let (processed_files, errored_files) = process_file_chunks(&files, chunk_size, script, term)?;
+
+    log_processing_results(&files, processed_files, errored_files);
+
+    Ok(())
+}
+
+fn process_file_chunks(
+    files: &[PathBuf],
+    chunk_size: usize,
+    script: Option<&Path>,
+    term: &Arc<AtomicBool>,
+) -> Result<(usize, usize)> {
+    let total_chunks = (files.len() + chunk_size - 1) / chunk_size;
+    let mut processed_files = 0;
+    let mut errored_files = 0;
+
+    for (n, chunk) in files.chunks(chunk_size).enumerate() {
+        if should_term(term) {
+            return Ok((processed_files, errored_files));
+        }
+
+        log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
+
+        let (processed, errored) = parallelize_chunk(chunk, script, term)?;
+
+        processed_files += processed;
+        errored_files += errored;
+
+        log::debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk.len());
+    }
+
+    Ok((processed_files, errored_files))
+}
+
+fn log_processing_results(files: &[PathBuf], processed_files: usize, errored_files: usize) {
+    log::debug!("Total number of files {}", files.len());
+    log::debug!("Total number of processed files {}", processed_files);
+    log::debug!("Total number of errored files {}", errored_files);
+    log::info!("PFP: Finished processing all files in input-path.");
+}
+
+fn sleep_daemon(sleep_time: u64) {
+    log::info!("Sleeping for {} seconds...", sleep_time);
+    std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+}
+
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
+/// TODO: try a context approach instead of passing lots of args / term to every call
 fn run(
     chunk_size: usize,
     job_slots: Option<usize>,
@@ -59,22 +138,11 @@ fn run(
     input_path: &Path,
     script: Option<&Path>,
 ) -> Result<()> {
-    let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(SIGTERM, term.clone())?;
-    signal_hook::flag::register(SIGINT, term.clone())?;
+    let term = setup_signal_handling()?;
 
     // Configure the thread pool
-    if let Some(slots) = job_slots {
-        // If job_slots is specified, use that number
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(slots)
-            .build_global()?;
-    } else {
-        // If job_slots is not specified, let Rayon use its default
-        rayon::ThreadPoolBuilder::new().build_global()?;
-    }
+    configure_thread_pool(job_slots)?;
 
-    // Do forever
     loop {
         log::info!("PFP: LOOP START");
 
@@ -82,68 +150,13 @@ fn run(
             return Ok(());
         }
 
-        // 1. Get all the files in our input path
-        let files: Vec<PathBuf> = get_files(input_path, &extensions)?;
-
-        if should_term(&term) {
-            return Ok(());
-        }
-
-        // 2. process chunks of input in parallel
-        let total_chunks = (files.len() + chunk_size - 1) / chunk_size; // Ceiling division
-
-        let mut processed_chunks = 0;
-        let mut processed_files = 0;
-        let mut errored_files = 0;
-
-        if script.is_some() {
-            log::debug!("Using script: {:?}", script);
-        }
-
-        for (n, chunk) in files.chunks(chunk_size).enumerate() {
-            if should_term(&term) {
-                return Ok(());
-            }
-
-            log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
-            log::debug!(
-                "chunk start: {} chunk_end: {}",
-                n * chunk_size,
-                n * chunk_size + chunk.len() - 1
-            );
-
-            let (processed, errored) = parallelize_chunk(chunk, script, &term)?;
-
-            processed_chunks += 1;
-            processed_files += processed;
-            errored_files += errored;
-
-            log::debug!(
-                "chunk {}/{} ({}): DONE",
-                processed_chunks,
-                total_chunks,
-                chunk.len()
-            );
-        }
-
-        log::debug!(
-            "Processed {} out of {} chunks",
-            processed_chunks,
-            total_chunks
-        );
-        log::debug!("Total number of files {}", files.len());
-        log::debug!("Total number of processed files {}", processed_files);
-        log::debug!("Total number of errored files {}", errored_files);
-
-        // 3. Do any necessary postprocessing
-        log::info!("PFP: Finished processing all files in input-path.");
+        process_files(chunk_size, &extensions, input_path, script, &term)?;
 
         if !daemon || should_term(&term) {
             return Ok(());
         }
 
-        log::info!("Sleeping for {} seconds...", sleep_time);
-        std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+        sleep_daemon(sleep_time);
     }
 }
 
