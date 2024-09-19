@@ -236,8 +236,5 @@ mod tests {
 /// }
 /// ```
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
-    if term.load(Ordering::Relaxed) {
-        return true;
-    }
-    false
+    term.load(Ordering::Relaxed)
 }
