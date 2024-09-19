@@ -32,12 +32,18 @@ use walkdir::WalkDir;
 /// in the chunk. Errors are propagated from the script execution.
 ///
 /// # Example
-///
 /// ```
 /// use std::path::{Path, PathBuf};
+/// use std::sync::Arc;
+/// use std::sync::atomic::AtomicBool;
+///
 /// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
-/// let script = Some(Path::new("~/process_file.sh"));
-/// let (processed, errored) = parallelize_chunk(&chunk, script, || false).expect("Failed to process chunk");
+/// let script = Some(Path::new("/usr/local/bin/process_file.sh"));
+/// let term_flag = Arc::new(AtomicBool::new(false));
+/// let should_cancel = || term_flag.load(std::sync::atomic::Ordering::Relaxed);
+///
+/// let (processed, errored) = parallelize_chunk(&chunk, script, should_cancel)
+///     .expect("Failed to process chunk");
 /// println!("Processed: {}, Errored: {}", processed, errored);
 /// ```
 pub fn parallelize_chunk<F>(

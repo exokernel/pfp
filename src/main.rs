@@ -131,7 +131,6 @@ fn sleep_daemon(sleep_time: u64) {
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
-/// TODO: try a context approach instead of passing lots of args / term to every call
 fn run(context: &ProcessingContext) -> Result<()> {
     // Configure the thread pool
     configure_thread_pool(context.job_slots)?;
