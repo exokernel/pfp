@@ -37,7 +37,10 @@ impl AppContext {
     }
 
     pub fn should_term(&self) -> bool {
-        should_term(&self.term)
+        if self.term.load(Ordering::Relaxed) {
+            return true;
+        }
+        false
     }
 
     pub fn chunk_size(&self) -> usize {
@@ -254,36 +257,4 @@ mod tests {
 
     // Additional tests can be added here, such as testing for permission errors,
     // or more complex directory structures.
-}
-
-/// Checks if a termination signal has been received.
-///
-/// This function checks the state of an atomic boolean flag to determine
-/// if a termination signal has been received.
-///
-/// # Arguments
-///
-/// * `term` - A reference to an `Arc<AtomicBool>` representing the termination flag.
-///
-/// # Returns
-///
-/// Returns `true` if a termination signal has been received, `false` otherwise.
-///
-/// # Example
-///
-/// ```
-/// use std::sync::Arc;
-/// use std::sync::atomic::AtomicBool;
-///
-/// let term_flag = Arc::new(AtomicBool::new(false));
-/// if should_term(&term_flag) {
-///     println!("Termination signal received");
-/// }
-/// ```
-pub fn should_term(term: &Arc<AtomicBool>) -> bool {
-    if term.load(Ordering::Relaxed) {
-        log::info!("PFP: CAUGHT SIGNAL! K Thx Bye!");
-        return true;
-    }
-    false
 }

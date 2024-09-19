@@ -67,6 +67,7 @@ fn process_files(context: &AppContext) -> Result<()> {
     let files = get_files(context)?;
 
     if context.should_term() {
+        log::info!("Received termination signal. Exiting...");
         return Ok(());
     }
 
@@ -84,6 +85,7 @@ fn process_file_chunks(context: &AppContext, files: &[PathBuf]) -> Result<(usize
 
     for (n, chunk) in files.chunks(context.chunk_size()).enumerate() {
         if context.should_term() {
+            log::info!("Received termination signal. Exiting...");
             return Ok((processed_files, errored_files));
         }
 
@@ -127,12 +129,18 @@ fn run(
         log::info!("PFP: LOOP START");
 
         if context.should_term() {
+            log::info!("Received termination signal. Exiting...");
             return Ok(());
         }
 
         process_files(&context)?;
 
-        if !daemon || context.should_term() {
+        if !daemon {
+            log::info!("Not running in daemon mode. Exiting after processing all files.");
+        }
+
+        if context.should_term() {
+            log::info!("Received termination signal. Exiting...");
             return Ok(());
         }
 
