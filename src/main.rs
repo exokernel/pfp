@@ -1,11 +1,16 @@
 use anyhow::Result;
 use clap::Parser;
 use pfp::*;
-use signal_hook::consts::{SIGINT, SIGTERM};
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::ffi::OsString;
+use std::path::PathBuf;
+use std::time::Duration;
+
+use std::str::FromStr;
+
+fn parse_duration(arg: &str) -> Result<Duration, std::num::ParseIntError> {
+    let seconds = u64::from_str(arg)?;
+    Ok(Duration::from_secs(seconds))
+}
 
 #[derive(Parser, Debug)]
 #[clap(name = "pfp", about = "Parallel File Processor")]
@@ -36,8 +41,8 @@ struct Opt {
 
     /// Seconds to sleep before processing all files in input_path again.
     /// Only used if --daemon is specified
-    #[clap(short = 't', long = "sleep-time", default_value = "5")]
-    sleep_time: u64,
+    #[clap(short = 't', long = "sleep-time", default_value = "5", value_parser = parse_duration)]
+    sleep_time: Duration,
 
     /// Shell script to run in parallel
     #[clap(short, long)]
@@ -45,13 +50,6 @@ struct Opt {
 
     /// Directory to read files from
     input_path: PathBuf,
-}
-
-fn setup_signal_handling() -> Result<Arc<AtomicBool>> {
-    let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(SIGTERM, term.clone())?;
-    signal_hook::flag::register(SIGINT, term.clone())?;
-    Ok(term)
 }
 
 fn configure_thread_pool(job_slots: Option<usize>) -> Result<()> {
@@ -65,44 +63,33 @@ fn configure_thread_pool(job_slots: Option<usize>) -> Result<()> {
     Ok(())
 }
 
-fn process_files(
-    chunk_size: usize,
-    extensions: &Option<Vec<&OsStr>>,
-    input_path: &Path,
-    script: Option<&Path>,
-    term: &Arc<AtomicBool>,
-) -> Result<()> {
-    let files = get_files(input_path, extensions)?;
+fn process_files(context: &AppContext) -> Result<()> {
+    let files = get_files(context)?;
 
-    if should_term(term) {
+    if context.should_term() {
         return Ok(());
     }
 
-    let (processed_files, errored_files) = process_file_chunks(&files, chunk_size, script, term)?;
+    let (processed_files, errored_files) = process_file_chunks(context, &files)?;
 
     log_processing_results(&files, processed_files, errored_files);
 
     Ok(())
 }
 
-fn process_file_chunks(
-    files: &[PathBuf],
-    chunk_size: usize,
-    script: Option<&Path>,
-    term: &Arc<AtomicBool>,
-) -> Result<(usize, usize)> {
-    let total_chunks = (files.len() + chunk_size - 1) / chunk_size;
+fn process_file_chunks(context: &AppContext, files: &[PathBuf]) -> Result<(usize, usize)> {
+    let total_chunks = (files.len() + context.chunk_size() - 1) / context.chunk_size();
     let mut processed_files = 0;
     let mut errored_files = 0;
 
-    for (n, chunk) in files.chunks(chunk_size).enumerate() {
-        if should_term(term) {
+    for (n, chunk) in files.chunks(context.chunk_size()).enumerate() {
+        if context.should_term() {
             return Ok((processed_files, errored_files));
         }
 
         log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
 
-        let (processed, errored) = parallelize_chunk(chunk, script, term)?;
+        let (processed, errored) = parallelize_chunk(context, chunk)?;
 
         processed_files += processed;
         errored_files += errored;
@@ -120,39 +107,32 @@ fn log_processing_results(files: &[PathBuf], processed_files: usize, errored_fil
     log::info!("PFP: Finished processing all files in input-path.");
 }
 
-fn sleep_daemon(sleep_time: u64) {
-    log::info!("Sleeping for {} seconds...", sleep_time);
-    std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+fn sleep_daemon(sleep_time: Duration) {
+    log::info!("Sleeping for {:?}...", sleep_time);
+    std::thread::sleep(sleep_time);
 }
 
 /// Do the thing forever unless interrupted.
 /// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
-/// TODO: try a context approach instead of passing lots of args / term to every call
 fn run(
-    chunk_size: usize,
+    context: AppContext,
     job_slots: Option<usize>,
-    sleep_time: u64,
+    sleep_time: Duration,
     daemon: bool,
-    extensions: Option<Vec<&OsStr>>,
-    input_path: &Path,
-    script: Option<&Path>,
 ) -> Result<()> {
-    let term = setup_signal_handling()?;
-
-    // Configure the thread pool
     configure_thread_pool(job_slots)?;
 
     loop {
         log::info!("PFP: LOOP START");
 
-        if should_term(&term) {
+        if context.should_term() {
             return Ok(());
         }
 
-        process_files(chunk_size, &extensions, input_path, script, &term)?;
+        process_files(&context)?;
 
-        if !daemon || should_term(&term) {
+        if !daemon || context.should_term() {
             return Ok(());
         }
 
@@ -187,15 +167,14 @@ fn main() -> Result<()> {
     // 1. Split the comma-separated string into individual extensions
     // 2. Trim whitespace from each extension
     // 3. Remove any empty extensions
-    // 4. Convert each extension to an OsStr
-    // 5. Collect the results into a Vec<&OsStr>
+    // 4. Convert each extension to an OsString
+    // 5. Collect the results into a Vec<OsString>
     // If no extensions were provided, ext_vec will be None
-    let ext_vec = opt.extensions.as_ref().map(|s| {
-        s.split(",")
-            .map(|ext| ext.trim())
+    let extensions = opt.extensions.as_ref().map(|s| {
+        s.split(',')
+            .map(|ext| OsString::from(ext.trim()))
             .filter(|ext| !ext.is_empty())
-            .map(OsStr::new)
-            .collect::<Vec<&OsStr>>()
+            .collect::<Vec<OsString>>()
     });
 
     env_logger::builder()
@@ -203,20 +182,14 @@ fn main() -> Result<()> {
         .init();
 
     log::debug!("{:?}", opt);
-    log::debug!("Parsed extensions: {:?}", ext_vec);
+    log::debug!("Parsed extensions: {:?}", extensions);
     if let Some(slots) = opt.job_slots {
         log::debug!("job_slots = {}", slots);
     }
 
-    run(
-        opt.chunk_size,
-        opt.job_slots,
-        opt.sleep_time,
-        opt.daemon,
-        ext_vec,
-        &opt.input_path,
-        opt.script.as_deref(),
-    )?;
+    let context = AppContext::new(opt.chunk_size, extensions, opt.input_path, opt.script)?;
+
+    run(context, opt.job_slots, opt.sleep_time, opt.daemon)?;
 
     Ok(())
 }

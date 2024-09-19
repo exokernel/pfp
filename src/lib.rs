@@ -1,11 +1,49 @@
 use anyhow::{Context, Result};
 use rayon::prelude::*;
-use std::ffi::OsStr;
+use signal_hook::consts::signal::{SIGINT, SIGTERM};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use walkdir::WalkDir;
+
+pub struct AppContext {
+    term: Arc<AtomicBool>,
+    chunk_size: usize,
+    extensions: Option<Vec<OsString>>,
+    input_path: PathBuf,
+    script: Option<PathBuf>,
+}
+
+impl AppContext {
+    pub fn new(
+        chunk_size: usize,
+        extensions: Option<Vec<OsString>>,
+        input_path: PathBuf,
+        script: Option<PathBuf>,
+    ) -> Result<Self> {
+        let term = Arc::new(AtomicBool::new(false));
+        signal_hook::flag::register(SIGTERM, Arc::clone(&term))?;
+        signal_hook::flag::register(SIGINT, Arc::clone(&term))?;
+
+        Ok(Self {
+            term,
+            chunk_size,
+            extensions,
+            input_path,
+            script,
+        })
+    }
+
+    pub fn should_term(&self) -> bool {
+        should_term(&self.term)
+    }
+
+    pub fn chunk_size(&self) -> usize {
+        self.chunk_size
+    }
+}
 
 /// Executes a command in parallel for a given chunk of file paths.
 ///
@@ -14,10 +52,8 @@ use walkdir::WalkDir;
 ///
 /// # Arguments
 ///
+/// * `context` - A reference to the `AppContext` containing processing configuration and state.
 /// * `chunk` - A slice of `PathBuf` representing the files to be processed.
-/// * `command` - A string slice containing the command to be executed for each file.
-/// * `term` - A reference to an `Arc<AtomicBool>` representing the termination flag. Allows tasks to return early if a
-///            termination signal is received.
 ///
 /// # Returns
 ///
@@ -35,29 +71,22 @@ use walkdir::WalkDir;
 ///
 /// ```
 /// use std::path::PathBuf;
-/// use std::sync::atomic::AtomicBool;
-/// use std::sync::Arc;
+/// let context = AppContext::new(10, None, PathBuf::from("/path/to/input"), Some(PathBuf::from("~/process_file.sh")))?;
 /// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
-/// let script = "~/process_file.sh";
-/// let term = Arc::new(AtomicBool::new(false));
-/// let (num_processed, num_errored) = parallelize_chunk(&chunk, command, &term).expect("Failed to process chunk");
+/// let (num_processed, num_errored) = parallelize_chunk(&context, &chunk).expect("Failed to process chunk");
 /// println!("Processed: {}, Errored: {}", num_processed, num_errored);
 /// ```
-pub fn parallelize_chunk(
-    chunk: &[PathBuf],
-    script: Option<&Path>,
-    term: &Arc<AtomicBool>,
-) -> Result<(usize, usize)> {
+pub fn parallelize_chunk(context: &AppContext, chunk: &[PathBuf]) -> Result<(usize, usize)> {
     let processed = AtomicUsize::new(0);
     let errored = AtomicUsize::new(0);
 
     chunk.par_iter().try_for_each(|file| -> Result<()> {
-        if should_term(term) {
+        if context.should_term() {
             log::info!("Cancelling task for file: {}", file.display());
             return Ok(());
         }
 
-        match script {
+        match &context.script {
             Some(script_path) => {
                 let output = Command::new(script_path)
                     .arg(file)
@@ -77,7 +106,7 @@ pub fn parallelize_chunk(
                 }
             }
             None => {
-                // Directly print the file name to stdout
+                // Directly log the file name if no script is provided
                 log::info!("Would process file: {}", file.display());
                 processed.fetch_add(1, Ordering::Relaxed);
             }
@@ -111,14 +140,14 @@ pub fn parallelize_chunk(
 ///
 /// This function may return an error if there are issues with file system operations
 /// or directory traversal.
-pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<Vec<PathBuf>> {
+pub fn get_files(context: &AppContext) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     let should_include = |file_path: &Path| -> bool {
-        if let Some(exts) = extensions {
+        if let Some(exts) = &context.extensions {
             file_path
                 .extension()
-                .map(|ext| exts.contains(&ext))
+                .map(|ext| exts.iter().any(|e| e == ext))
                 .unwrap_or(false)
         } else {
             true
@@ -126,14 +155,14 @@ pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<
     };
 
     // Check if the input path exists before walking
-    if !input_path.exists() {
+    if !context.input_path.exists() {
         return Err(anyhow::anyhow!("Input path does not exist"));
     }
 
     // TODO: parallelize this with rayon!
-    for entry in WalkDir::new(input_path).into_iter() {
-        let entry =
-            entry.with_context(|| format!("Failed to read entry in {}", input_path.display()))?;
+    for entry in WalkDir::new(&context.input_path).into_iter() {
+        let entry = entry
+            .with_context(|| format!("Failed to read entry in {}", context.input_path.display()))?;
         if entry.file_type().is_file() && should_include(entry.path()) {
             files.push(entry.path().to_path_buf());
         }
@@ -163,12 +192,23 @@ mod tests {
         temp_dir
     }
 
+    fn create_test_context(temp_dir: &TempDir, extensions: Option<Vec<OsString>>) -> AppContext {
+        AppContext {
+            term: Arc::new(AtomicBool::new(false)),
+            chunk_size: 10, // Some default value
+            extensions,
+            input_path: temp_dir.path().to_path_buf(),
+            script: None,
+        }
+    }
+
     #[test]
     fn test_get_files3_with_extensions() {
         let temp_dir = create_test_directory();
-        let extensions = Some(vec![OsStr::new("txt"), OsStr::new("jpg")]);
+        let extensions = Some(vec![OsString::from("txt"), OsString::from("jpg")]);
 
-        let files = get_files(temp_dir.path(), &extensions).unwrap();
+        let context = create_test_context(&temp_dir, extensions);
+        let files = get_files(&context).unwrap();
 
         assert_eq!(files.len(), 4);
         assert!(files.iter().any(|f| f.file_name().unwrap() == "file1.txt"));
@@ -180,9 +220,9 @@ mod tests {
     #[test]
     fn test_get_files3_without_extensions() {
         let temp_dir = create_test_directory();
-        let extensions = None;
+        let context = create_test_context(&temp_dir, None);
 
-        let files = get_files(temp_dir.path(), &extensions).unwrap();
+        let files = get_files(&context).unwrap();
 
         assert_eq!(files.len(), 5);
     }
@@ -190,19 +230,24 @@ mod tests {
     #[test]
     fn test_get_files3_empty_directory() {
         let temp_dir = TempDir::new().unwrap();
-        let extensions = None;
-
-        let files = get_files(temp_dir.path(), &extensions).unwrap();
+        let context = create_test_context(&temp_dir, None);
+        let files = get_files(&context).unwrap();
 
         assert!(files.is_empty());
     }
 
     #[test]
     fn test_get_files3_non_existent_directory() {
-        let non_existent_path = Path::new("/this/path/does/not/exist");
-        let extensions = None;
+        let non_existent_path = PathBuf::from("/this/path/does/not/exist");
+        let context = AppContext {
+            term: Arc::new(AtomicBool::new(false)),
+            chunk_size: 10,
+            extensions: None,
+            input_path: non_existent_path,
+            script: None,
+        };
 
-        let result = get_files(non_existent_path, &extensions);
+        let result = get_files(&context);
 
         assert!(result.is_err());
     }
