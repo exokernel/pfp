@@ -133,15 +133,13 @@ fn sleep_daemon(sleep_time: u64) {
 /// Wait for each chunk to complete before processing the next chunk
 /// TODO: try a context approach instead of passing lots of args / term to every call
 fn run(context: &ProcessingContext) -> Result<()> {
-    let term = setup_signal_handling()?;
-
     // Configure the thread pool
     configure_thread_pool(context.job_slots)?;
 
     loop {
         log::info!("PFP: LOOP START");
 
-        if should_term(&term) {
+        if should_term(&context.term) {
             log::info!("PFP: Caught signal, exiting early...");
             return Ok(());
         }
@@ -153,7 +151,7 @@ fn run(context: &ProcessingContext) -> Result<()> {
             return Ok(());
         }
 
-        if should_term(&term) {
+        if should_term(&context.term) {
             log::info!("PFP: Caught signal, exiting early...");
             return Ok(());
         }
