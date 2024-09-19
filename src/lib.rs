@@ -15,9 +15,9 @@ use walkdir::WalkDir;
 /// # Arguments
 ///
 /// * `chunk` - A slice of `PathBuf` representing the files to be processed.
-/// * `command` - A string slice containing the command to be executed for each file.
-/// * `term` - A reference to an `Arc<AtomicBool>` representing the termination flag. Allows tasks to return early if a
-///            termination signal is received.
+/// * `script` - An `Option<&Path>` containing the path to the script to be executed for each file.
+///              If `None`, the function will only log the file names without executing a script.
+/// * `should_cancel` - A closure that returns a boolean indicating whether the operation should be cancelled.
 ///
 /// # Returns
 ///
@@ -28,20 +28,17 @@ use walkdir::WalkDir;
 ///
 /// # Errors
 ///
-/// This function may return an error if there are issues executing the command for any file
-/// in the chunk. Errors are propagated from the command execution.
+/// This function may return an error if there are issues executing the script for any file
+/// in the chunk. Errors are propagated from the script execution.
 ///
 /// # Example
 ///
 /// ```
-/// use std::path::PathBuf;
-/// use std::sync::atomic::AtomicBool;
-/// use std::sync::Arc;
+/// use std::path::{Path, PathBuf};
 /// let chunk = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
-/// let script = "~/process_file.sh";
-/// let term = Arc::new(AtomicBool::new(false));
-/// let (num_processed, num_errored) = parallelize_chunk(&chunk, command, &term).expect("Failed to process chunk");
-/// println!("Processed: {}, Errored: {}", num_processed, num_errored);
+/// let script = Some(Path::new("~/process_file.sh"));
+/// let (processed, errored) = parallelize_chunk(&chunk, script, || false).expect("Failed to process chunk");
+/// println!("Processed: {}, Errored: {}", processed, errored);
 /// ```
 pub fn parallelize_chunk<F>(
     chunk: &[PathBuf],
@@ -240,7 +237,6 @@ mod tests {
 /// ```
 pub fn should_term(term: &Arc<AtomicBool>) -> bool {
     if term.load(Ordering::Relaxed) {
-        log::info!("PFP: CAUGHT SIGNAL! K Thx Bye!");
         return true;
     }
     false

@@ -47,6 +47,17 @@ struct Opt {
     input_path: PathBuf,
 }
 
+struct ProcessingContext<'a> {
+    chunk_size: usize,
+    extensions: &'a Option<Vec<&'a OsStr>>,
+    input_path: &'a Path,
+    script: Option<&'a Path>,
+    term: Arc<AtomicBool>,
+    daemon: bool,
+    sleep_time: u64,
+    job_slots: Option<usize>,
+}
+
 fn setup_signal_handling() -> Result<Arc<AtomicBool>> {
     let term = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(SIGTERM, term.clone())?;
@@ -65,45 +76,36 @@ fn configure_thread_pool(job_slots: Option<usize>) -> Result<()> {
     Ok(())
 }
 
-fn process_files(
-    chunk_size: usize,
-    extensions: &Option<Vec<&OsStr>>,
-    input_path: &Path,
-    script: Option<&Path>,
-    term: &Arc<AtomicBool>,
-) -> Result<()> {
-    let files = get_files(input_path, extensions)?;
+fn process_files(context: &ProcessingContext) -> Result<()> {
+    let files = get_files(context.input_path, context.extensions)?;
 
-    if should_term(term) {
+    if should_term(&context.term) {
+        log::info!("PFP: Caught signal, exiting early...");
         return Ok(());
     }
 
-    let (processed_files, errored_files) = process_file_chunks(&files, chunk_size, script, term)?;
+    let (processed_files, errored_files) = process_file_chunks(context, &files)?;
 
     log_processing_results(&files, processed_files, errored_files);
 
     Ok(())
 }
 
-fn process_file_chunks(
-    files: &[PathBuf],
-    chunk_size: usize,
-    script: Option<&Path>,
-    term: &Arc<AtomicBool>,
-) -> Result<(usize, usize)> {
-    let total_chunks = (files.len() + chunk_size - 1) / chunk_size;
+fn process_file_chunks(context: &ProcessingContext, files: &[PathBuf]) -> Result<(usize, usize)> {
+    let total_chunks = (files.len() + context.chunk_size - 1) / context.chunk_size;
     let mut processed_files = 0;
     let mut errored_files = 0;
 
-    for (n, chunk) in files.chunks(chunk_size).enumerate() {
-        if should_term(term) {
+    for (n, chunk) in files.chunks(context.chunk_size).enumerate() {
+        if should_term(&context.term) {
+            log::info!("PFP: Caught signal, exiting early...");
             return Ok((processed_files, errored_files));
         }
 
         log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
 
-        let should_cancel = || should_term(term);
-        let (processed, errored) = parallelize_chunk(chunk, script, should_cancel)?;
+        let should_cancel = || should_term(&context.term);
+        let (processed, errored) = parallelize_chunk(chunk, context.script, should_cancel)?;
 
         processed_files += processed;
         errored_files += errored;
@@ -130,34 +132,33 @@ fn sleep_daemon(sleep_time: u64) {
 /// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
 /// TODO: try a context approach instead of passing lots of args / term to every call
-fn run(
-    chunk_size: usize,
-    job_slots: Option<usize>,
-    sleep_time: u64,
-    daemon: bool,
-    extensions: Option<Vec<&OsStr>>,
-    input_path: &Path,
-    script: Option<&Path>,
-) -> Result<()> {
+fn run(context: &ProcessingContext) -> Result<()> {
     let term = setup_signal_handling()?;
 
     // Configure the thread pool
-    configure_thread_pool(job_slots)?;
+    configure_thread_pool(context.job_slots)?;
 
     loop {
         log::info!("PFP: LOOP START");
 
         if should_term(&term) {
+            log::info!("PFP: Caught signal, exiting early...");
             return Ok(());
         }
 
-        process_files(chunk_size, &extensions, input_path, script, &term)?;
+        process_files(context)?;
 
-        if !daemon || should_term(&term) {
+        if !context.daemon {
+            log::info!("PFP: Not running as daemon, exiting...");
             return Ok(());
         }
 
-        sleep_daemon(sleep_time);
+        if should_term(&term) {
+            log::info!("PFP: Caught signal, exiting early...");
+            return Ok(());
+        }
+
+        sleep_daemon(context.sleep_time);
     }
 }
 
@@ -209,15 +210,18 @@ fn main() -> Result<()> {
         log::debug!("job_slots = {}", slots);
     }
 
-    run(
-        opt.chunk_size,
-        opt.job_slots,
-        opt.sleep_time,
-        opt.daemon,
-        ext_vec,
-        &opt.input_path,
-        opt.script.as_deref(),
-    )?;
+    let context = ProcessingContext {
+        chunk_size: opt.chunk_size,
+        extensions: &ext_vec,
+        input_path: &opt.input_path,
+        job_slots: opt.job_slots,
+        script: opt.script.as_deref(),
+        term: setup_signal_handling()?,
+        sleep_time: opt.sleep_time,
+        daemon: opt.daemon,
+    };
+
+    run(&context)?;
 
     Ok(())
 }
