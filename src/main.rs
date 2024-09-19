@@ -102,7 +102,8 @@ fn process_file_chunks(
 
         log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
 
-        let (processed, errored) = parallelize_chunk(chunk, script, term)?;
+        let should_cancel = || should_term(term);
+        let (processed, errored) = parallelize_chunk(chunk, script, should_cancel)?;
 
         processed_files += processed;
         errored_files += errored;

@@ -43,16 +43,19 @@ use walkdir::WalkDir;
 /// let (num_processed, num_errored) = parallelize_chunk(&chunk, command, &term).expect("Failed to process chunk");
 /// println!("Processed: {}, Errored: {}", num_processed, num_errored);
 /// ```
-pub fn parallelize_chunk(
+pub fn parallelize_chunk<F>(
     chunk: &[PathBuf],
     script: Option<&Path>,
-    term: &Arc<AtomicBool>,
-) -> Result<(usize, usize)> {
+    should_cancel: F,
+) -> Result<(usize, usize)>
+where
+    F: Fn() -> bool + Send + Sync,
+{
     let processed = AtomicUsize::new(0);
     let errored = AtomicUsize::new(0);
 
     chunk.par_iter().try_for_each(|file| -> Result<()> {
-        if should_term(term) {
+        if should_cancel() {
             log::info!("Cancelling task for file: {}", file.display());
             return Ok(());
         }
