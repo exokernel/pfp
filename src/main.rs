@@ -132,7 +132,6 @@ fn sleep_daemon(sleep_time: u64) {
 /// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
 fn run(context: &ProcessingContext) -> Result<()> {
-    // Configure the thread pool
     configure_thread_pool(context.job_slots)?;
 
     loop {
