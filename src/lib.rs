@@ -100,6 +100,82 @@ where
     ))
 }
 
+#[cfg(test)]
+mod parallelize_chunk_tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
+    use tempfile::TempDir;
+
+    fn create_test_files(dir: &Path, num_files: usize) -> Vec<PathBuf> {
+        (0..num_files)
+            .map(|i| {
+                let path = dir.join(format!("test_file_{}.txt", i));
+                File::create(&path).unwrap();
+                path
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_parallelize_chunk_without_script() {
+        let temp_dir = TempDir::new().unwrap();
+        let files = create_test_files(temp_dir.path(), 5);
+        let term_flag = Arc::new(AtomicBool::new(false));
+        let should_cancel = || term_flag.load(Ordering::Relaxed);
+
+        let (processed, errored) = parallelize_chunk(&files, None, should_cancel).unwrap();
+
+        assert_eq!(processed, 5);
+        assert_eq!(errored, 0);
+    }
+
+    #[test]
+    fn test_parallelize_chunk_with_cancellation() {
+        let temp_dir = TempDir::new().unwrap();
+        let files = create_test_files(temp_dir.path(), 5);
+        let term_flag = Arc::new(AtomicBool::new(true));
+        let should_cancel = || term_flag.load(Ordering::Relaxed);
+
+        let (processed, errored) = parallelize_chunk(&files, None, should_cancel).unwrap();
+
+        assert_eq!(processed, 0);
+        assert_eq!(errored, 0);
+    }
+
+    #[test]
+    fn test_parallelize_chunk_with_script() {
+        let temp_dir = TempDir::new().unwrap();
+        let files = create_test_files(temp_dir.path(), 3);
+
+        let script_content = "#!/bin/bash\necho \"Processing $1\"";
+        let script_path = temp_dir.path().join("test_script.sh");
+        File::create(&script_path)
+            .unwrap()
+            .write_all(script_content.as_bytes())
+            .unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&script_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&script_path, perms).unwrap();
+        }
+
+        let term_flag = Arc::new(AtomicBool::new(false));
+        let should_cancel = || term_flag.load(Ordering::Relaxed);
+
+        let (processed, errored) =
+            parallelize_chunk(&files, Some(&script_path), should_cancel).unwrap();
+
+        assert_eq!(processed, 3);
+        assert_eq!(errored, 0);
+    }
+}
+
 /// Recursively retrieves files from a given directory, optionally filtering by file extensions.
 ///
 /// This function traverses the directory structure starting from the provided `input_path`,
