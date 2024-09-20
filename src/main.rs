@@ -6,48 +6,7 @@ use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-/// Checks if a termination signal has been received and exits the current function if so.
-///
-/// This macro can be used in two ways:
-///
-/// 1. With a single argument: `term_if_signal_rcvd!(context)`
-///    This version returns `Ok(())` if a termination signal is received.
-///
-/// 2. With two arguments: `term_if_signal_rcvd!(context, return_value)`
-///    This version returns `Ok(return_value)` if a termination signal is received.
-///
-/// # Arguments
-///
-/// * `context` - A reference to a `ProcessingContext` struct.
-/// * `return_value` - (Optional) The value to return wrapped in `Ok()` if a termination signal is received.
-///
-/// # Examples
-///
-/// ```
-/// fn example_function(context: &ProcessingContext) -> Result<()> {
-///     term_if_signal_rcvd!(context);
-///     // Rest of the function
-/// }
-///
-/// fn example_function_with_return(context: &ProcessingContext) -> Result<Vec<String>> {
-///     term_if_signal_rcvd!(context, Vec::new());
-///     // Rest of the function
-/// }
-/// ```
-macro_rules! term_if_signal_rcvd {
-    ($context:expr) => {
-        if $context.term_signal_rcvd() {
-            log::info!("PFP: Received termination signal, exiting early...");
-            return Ok(());
-        }
-    };
-    ($context:expr, $ret:expr) => {
-        if $context.term_signal_rcvd() {
-            log::info!("PFP: Received termination signal, exiting early...");
-            return Ok($ret);
-        }
-    };
-}
+use pfp::term_if_signal_rcvd;
 
 #[derive(Parser, Debug)]
 #[clap(name = "pfp", about = "Parallel File Processor")]

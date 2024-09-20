@@ -5,6 +5,22 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+#[macro_export]
+macro_rules! term_if_signal_rcvd {
+    ($context:expr) => {
+        if $context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
+            return Ok(());
+        }
+    };
+    ($context:expr, $ret:expr) => {
+        if $context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
+            return Ok($ret);
+        }
+    };
+}
+
 pub struct ProcessingContext<'a> {
     pub chunk_size: usize,
     pub extensions: &'a Option<Vec<&'a OsStr>>,
