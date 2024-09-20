@@ -236,11 +236,8 @@ fn main() -> Result<()> {
         .target(env_logger::Target::Stdout)
         .init();
 
-    log::debug!("{:?}", opt);
+    log::debug!("Options: {:?}", opt);
     log::debug!("Parsed extensions: {:?}", ext_vec);
-    if let Some(slots) = opt.job_slots {
-        log::debug!("job_slots = {}", slots);
-    }
 
     let context = ProcessingContext {
         chunk_size: opt.chunk_size,
