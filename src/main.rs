@@ -1,6 +1,5 @@
 use anyhow::Result;
 use clap::Parser;
-use pfp::*;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -58,29 +57,34 @@ struct ProcessingContext<'a> {
     job_slots: Option<usize>,
 }
 
-fn setup_signal_handling() -> Result<Arc<AtomicBool>> {
-    let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(SIGTERM, term.clone())?;
-    signal_hook::flag::register(SIGINT, term.clone())?;
-    Ok(term)
-}
-
-fn configure_thread_pool(job_slots: Option<usize>) -> Result<()> {
-    if let Some(slots) = job_slots {
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(slots)
-            .build_global()?;
-    } else {
-        rayon::ThreadPoolBuilder::new().build_global()?;
+impl<'a> ProcessingContext<'a> {
+    fn setup_signal_handling(&self) -> Result<()> {
+        signal_hook::flag::register(SIGTERM, self.term.clone())?;
+        signal_hook::flag::register(SIGINT, self.term.clone())?;
+        Ok(())
     }
-    Ok(())
+
+    fn term_signal_rcvd(&self) -> bool {
+        self.term.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn configure_thread_pool(&self) -> Result<()> {
+        if let Some(slots) = self.job_slots {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(slots)
+                .build_global()?;
+        } else {
+            rayon::ThreadPoolBuilder::new().build_global()?;
+        }
+        Ok(())
+    }
 }
 
 fn process_files(context: &ProcessingContext) -> Result<()> {
-    let files = get_files(context.input_path, context.extensions)?;
+    let files = pfp::get_files(context.input_path, context.extensions)?;
 
-    if should_term(&context.term) {
-        log::info!("PFP: Caught signal, exiting early...");
+    if context.term_signal_rcvd() {
+        log::info!("PFP: Received termination signal, exiting early...");
         return Ok(());
     }
 
@@ -97,15 +101,15 @@ fn process_file_chunks(context: &ProcessingContext, files: &[PathBuf]) -> Result
     let mut errored_files = 0;
 
     for (n, chunk) in files.chunks(context.chunk_size).enumerate() {
-        if should_term(&context.term) {
-            log::info!("PFP: Caught signal, exiting early...");
+        if context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
             return Ok((processed_files, errored_files));
         }
 
         log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
 
-        let should_cancel = || should_term(&context.term);
-        let (processed, errored) = parallelize_chunk(chunk, context.script, should_cancel)?;
+        let should_cancel = || context.term_signal_rcvd();
+        let (processed, errored) = pfp::parallelize_chunk(chunk, context.script, should_cancel)?;
 
         processed_files += processed;
         errored_files += errored;
@@ -132,13 +136,14 @@ fn sleep_daemon(sleep_time: u64) {
 /// Read all files in the input path and break them into chunks to execute in parallel
 /// Wait for each chunk to complete before processing the next chunk
 fn run(context: &ProcessingContext) -> Result<()> {
-    configure_thread_pool(context.job_slots)?;
+    context.setup_signal_handling()?;
+    context.configure_thread_pool()?;
 
     loop {
         log::info!("PFP: LOOP START");
 
-        if should_term(&context.term) {
-            log::info!("PFP: Caught signal, exiting early...");
+        if context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
             return Ok(());
         }
 
@@ -149,8 +154,8 @@ fn run(context: &ProcessingContext) -> Result<()> {
             return Ok(());
         }
 
-        if should_term(&context.term) {
-            log::info!("PFP: Caught signal, exiting early...");
+        if context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
             return Ok(());
         }
 
@@ -212,7 +217,7 @@ fn main() -> Result<()> {
         input_path: &opt.input_path,
         job_slots: opt.job_slots,
         script: opt.script.as_deref(),
-        term: setup_signal_handling()?,
+        term: Arc::new(AtomicBool::new(false)),
         sleep_time: opt.sleep_time,
         daemon: opt.daemon,
     };
