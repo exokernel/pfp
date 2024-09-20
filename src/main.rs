@@ -6,6 +6,49 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+/// Checks if a termination signal has been received and exits the current function if so.
+///
+/// This macro can be used in two ways:
+///
+/// 1. With a single argument: `term_if_signal_rcvd!(context)`
+///    This version returns `Ok(())` if a termination signal is received.
+///
+/// 2. With two arguments: `term_if_signal_rcvd!(context, return_value)`
+///    This version returns `Ok(return_value)` if a termination signal is received.
+///
+/// # Arguments
+///
+/// * `context` - A reference to a `ProcessingContext` struct.
+/// * `return_value` - (Optional) The value to return wrapped in `Ok()` if a termination signal is received.
+///
+/// # Examples
+///
+/// ```
+/// fn example_function(context: &ProcessingContext) -> Result<()> {
+///     term_if_signal_rcvd!(context);
+///     // Rest of the function
+/// }
+///
+/// fn example_function_with_return(context: &ProcessingContext) -> Result<Vec<String>> {
+///     term_if_signal_rcvd!(context, Vec::new());
+///     // Rest of the function
+/// }
+/// ```
+macro_rules! term_if_signal_rcvd {
+    ($context:expr) => {
+        if $context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
+            return Ok(());
+        }
+    };
+    ($context:expr, $ret:expr) => {
+        if $context.term_signal_rcvd() {
+            log::info!("PFP: Received termination signal, exiting early...");
+            return Ok($ret);
+        }
+    };
+}
+
 #[derive(Parser, Debug)]
 #[clap(name = "pfp", about = "Parallel File Processor")]
 struct Opt {
@@ -83,10 +126,7 @@ impl<'a> ProcessingContext<'a> {
 fn process_files(context: &ProcessingContext) -> Result<()> {
     let files = pfp::get_files(context.input_path, context.extensions)?;
 
-    if context.term_signal_rcvd() {
-        log::info!("PFP: Received termination signal, exiting early...");
-        return Ok(());
-    }
+    term_if_signal_rcvd!(context);
 
     let (processed_files, errored_files) = process_file_chunks(context, &files)?;
 
@@ -101,10 +141,7 @@ fn process_file_chunks(context: &ProcessingContext, files: &[PathBuf]) -> Result
     let mut errored_files = 0;
 
     for (n, chunk) in files.chunks(context.chunk_size).enumerate() {
-        if context.term_signal_rcvd() {
-            log::info!("PFP: Received termination signal, exiting early...");
-            return Ok((processed_files, errored_files));
-        }
+        term_if_signal_rcvd!(context, (processed_files, errored_files));
 
         log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
 
@@ -142,10 +179,7 @@ fn run(context: &ProcessingContext) -> Result<()> {
     loop {
         log::info!("PFP: LOOP START");
 
-        if context.term_signal_rcvd() {
-            log::info!("PFP: Received termination signal, exiting early...");
-            return Ok(());
-        }
+        term_if_signal_rcvd!(context);
 
         process_files(context)?;
 
@@ -154,10 +188,7 @@ fn run(context: &ProcessingContext) -> Result<()> {
             return Ok(());
         }
 
-        if context.term_signal_rcvd() {
-            log::info!("PFP: Received termination signal, exiting early...");
-            return Ok(());
-        }
+        term_if_signal_rcvd!(context);
 
         sleep_daemon(context.sleep_time);
     }
