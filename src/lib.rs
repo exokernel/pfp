@@ -6,6 +6,9 @@ use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use walkdir::WalkDir;
 
+mod context;
+pub use context::ProcessingContext;
+
 /// Executes a command in parallel for a given chunk of file paths.
 ///
 /// This function processes a chunk of file paths in parallel, executing the specified command

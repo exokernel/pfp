@@ -1,9 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
-use signal_hook::consts::{SIGINT, SIGTERM};
+use pfp::ProcessingContext;
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
 /// Checks if a termination signal has been received and exits the current function if so.
@@ -87,40 +87,6 @@ struct Opt {
 
     /// Directory to read files from
     input_path: PathBuf,
-}
-
-struct ProcessingContext<'a> {
-    chunk_size: usize,
-    extensions: &'a Option<Vec<&'a OsStr>>,
-    input_path: &'a Path,
-    script: Option<&'a Path>,
-    term: Arc<AtomicBool>,
-    daemon: bool,
-    sleep_time: u64,
-    job_slots: Option<usize>,
-}
-
-impl<'a> ProcessingContext<'a> {
-    fn setup_signal_handling(&self) -> Result<()> {
-        signal_hook::flag::register(SIGTERM, self.term.clone())?;
-        signal_hook::flag::register(SIGINT, self.term.clone())?;
-        Ok(())
-    }
-
-    fn term_signal_rcvd(&self) -> bool {
-        self.term.load(Ordering::Relaxed)
-    }
-
-    fn configure_thread_pool(&self) -> Result<()> {
-        if let Some(slots) = self.job_slots {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(slots)
-                .build_global()?;
-        } else {
-            rayon::ThreadPoolBuilder::new().build_global()?;
-        }
-        Ok(())
-    }
 }
 
 fn process_files(context: &ProcessingContext) -> Result<()> {
