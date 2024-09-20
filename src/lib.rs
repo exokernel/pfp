@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use rayon::prelude::*;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -135,7 +135,7 @@ pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<
 
     // Check if the input path exists before walking
     if !input_path.exists() {
-        return Err(anyhow::anyhow!("Input path does not exist"));
+        return Err(anyhow!("Input path does not exist"));
     }
 
     // TODO: parallelize this with rayon!

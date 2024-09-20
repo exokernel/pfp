@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use pfp::ProcessingContext;
 use std::ffi::OsStr;
@@ -131,16 +131,10 @@ fn main() -> Result<()> {
     // Validate script if provided
     if let Some(script_path) = &opt.script {
         if !script_path.exists() {
-            return Err(anyhow::anyhow!(
-                "Script path does not exist: {:?}",
-                script_path
-            ));
+            return Err(anyhow!("Script path does not exist: {:?}", script_path));
         }
         if !script_path.is_file() {
-            return Err(anyhow::anyhow!(
-                "Script path is not a file: {:?}",
-                script_path
-            ));
+            return Err(anyhow!("Script path is not a file: {:?}", script_path));
         }
     }
 
