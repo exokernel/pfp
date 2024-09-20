@@ -5,6 +5,8 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::thread::sleep;
+use std::time::Duration;
 
 use pfp::term_if_signal_rcvd;
 
@@ -91,7 +93,7 @@ fn log_processing_results(files: &[PathBuf], processed_files: usize, errored_fil
 
 fn sleep_daemon(sleep_time: u64) {
     log::info!("Sleeping for {} seconds...", sleep_time);
-    std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+    sleep(Duration::from_secs(sleep_time));
 }
 
 /// Do the thing forever unless interrupted.
