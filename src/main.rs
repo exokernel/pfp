@@ -3,7 +3,7 @@ use clap::Parser;
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 /// Checks if a termination signal has been received and exits the current function if so.
@@ -108,7 +108,7 @@ impl<'a> ProcessingContext<'a> {
     }
 
     fn term_signal_rcvd(&self) -> bool {
-        self.term.load(std::sync::atomic::Ordering::Relaxed)
+        self.term.load(Ordering::Relaxed)
     }
 
     fn configure_thread_pool(&self) -> Result<()> {
