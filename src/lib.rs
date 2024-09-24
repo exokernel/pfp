@@ -198,8 +198,6 @@ mod parallelize_chunk_tests {
 /// This function may return an error if there are issues with file system operations
 /// or directory traversal.
 pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<Vec<PathBuf>> {
-    let mut files = Vec::new();
-
     let should_include = |file_path: &Path| -> bool {
         if let Some(exts) = extensions {
             file_path
@@ -217,13 +215,44 @@ pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<
     }
 
     // TODO: parallelize this with rayon!
-    for entry in WalkDir::new(input_path).into_iter() {
-        let entry =
-            entry.with_context(|| format!("Failed to read entry in {}", input_path.display()))?;
-        if entry.file_type().is_file() && should_include(entry.path()) {
-            files.push(entry.path().to_path_buf());
-        }
-    }
+
+    // For loop isn't idiomatic Rust, but it was a start
+    //for entry in WalkDir::new(input_path).into_iter() {
+    //    let entry =
+    //        entry.with_context(|| format!("Failed to read entry in {}", input_path.display()))?;
+    //    if entry.file_type().is_file() && should_include(entry.path()) {
+    //        files.push(entry.path().to_path_buf());
+    //    }
+    //}
+
+    // using map and filter to collect files and return early if an error occurs
+    //let files = WalkDir::new(input_path)
+    //    .into_iter()
+    //    .map(|entry| {
+    //        entry.with_context(|| format!("Failed to read entry in {}", input_path.display()))
+    //    })
+    //    .filter(|entry| match entry {
+    //        Ok(e) => e.file_type().is_file() && should_include(e.path()),
+    //        Err(_) => true,
+    //    })
+    //    .map(|entry| entry.map(|e| e.path().to_path_buf()))
+    //    .collect::<Result<Vec<PathBuf>>>()?;
+
+    // Even better is using filter_map to handle both Ok and Err cases
+    // See https://doc.rust-lang.org/rust-by-example/error/iter_result.html#fail-the-entire-operation-with-collect
+    let files = WalkDir::new(input_path)
+        .into_iter()
+        .filter_map(|entry| {
+            match entry.with_context(|| format!("Failed to read entry in {}", input_path.display()))
+            {
+                Ok(e) if e.file_type().is_file() && should_include(e.path()) => {
+                    Some(Ok(e.path().to_path_buf()))
+                }
+                Ok(_) => None,
+                Err(e) => Some(Err(e)),
+            }
+        })
+        .collect::<Result<Vec<PathBuf>>>()?;
 
     Ok(files)
 }
