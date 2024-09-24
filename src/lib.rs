@@ -74,11 +74,11 @@ where
                     })?;
 
                 if output.status.success() {
-                    log::debug!("Processed file: {}", file.to_string_lossy());
+                    log::debug!("Processed file: {}", file.display());
                     log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
                     processed.fetch_add(1, Ordering::Relaxed);
                 } else {
-                    log::error!("Script failed for file: {}", file.to_string_lossy());
+                    log::error!("Script failed for file: {}", file.display());
                     log::error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
                     errored.fetch_add(1, Ordering::Relaxed);
                 }
