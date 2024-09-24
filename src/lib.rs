@@ -60,12 +60,11 @@ where
     let errored = AtomicUsize::new(0);
 
     chunk.par_iter().try_for_each(|file| -> Result<()> {
-        if should_cancel() {
-            log::info!("Cancelling task for file: {}", file.display());
-            return Ok(());
-        }
-
         match script {
+            Some(_script_path) if should_cancel() => {
+                log::info!("Cancelling task for file: {}", file.display());
+                return Ok(());
+            }
             Some(script_path) => {
                 let output = Command::new(script_path)
                     .arg(file)
@@ -83,6 +82,9 @@ where
                     log::error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
                     errored.fetch_add(1, Ordering::Relaxed);
                 }
+            }
+            None if should_cancel() => {
+                log::info!("Cancelling task for file: {}", file.display());
             }
             None => {
                 // Directly log the file name
