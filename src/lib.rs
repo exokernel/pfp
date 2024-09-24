@@ -3,7 +3,6 @@ use rayon::prelude::*;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use walkdir::WalkDir;
 
 mod context;
@@ -23,10 +22,12 @@ pub use context::ProcessingContext;
 ///
 /// # Returns
 ///
-/// Returns a `Result<(usize, usize)>` indicating success or failure of the operation.
+/// Returns a `Result<(usize, usize, usize)>` indicating success or failure of the operation.
 ///
-/// The tuple contains the number of files successfully processed and the number of files that encountered errors during
-/// processing.
+/// The tuple contains:
+/// - The number of files successfully processed
+/// - The number of files that encountered errors during processing
+/// - The number of files that were cancelled due to the `should_cancel` condition
 ///
 /// # Errors
 ///
@@ -44,62 +45,79 @@ pub use context::ProcessingContext;
 /// let term_flag = Arc::new(AtomicBool::new(false));
 /// let should_cancel = || term_flag.load(std::sync::atomic::Ordering::Relaxed);
 ///
-/// let (processed, errored) = parallelize_chunk(&chunk, script, should_cancel)
+/// let (processed, errored, cancelled) = parallelize_chunk(&chunk, script, should_cancel)
 ///     .expect("Failed to process chunk");
-/// println!("Processed: {}, Errored: {}", processed, errored);
+/// println!("Processed: {}, Errored: {}, Cancelled: {}", processed, errored, cancelled);
 /// ```
 pub fn parallelize_chunk<F>(
     chunk: &[PathBuf],
     script: Option<&Path>,
     should_cancel: F,
-) -> Result<(usize, usize)>
+) -> Result<(usize, usize, usize)>
 where
     F: Fn() -> bool + Send + Sync,
 {
-    let processed = AtomicUsize::new(0);
-    let errored = AtomicUsize::new(0);
+    #[derive(Debug)]
+    enum TaskOutcome {
+        Processed,
+        Errored,
+        Cancelled,
+    }
 
-    chunk.par_iter().try_for_each(|file| -> Result<()> {
-        match script {
-            _ if should_cancel() => {
-                log::info!("Cancelling task for file: {}", file.display());
-                return Ok(());
-            }
-            Some(script_path) => {
-                let output = Command::new(script_path)
-                    .arg(file)
-                    .output()
-                    .with_context(|| {
-                        format!("Failed to execute script for file: {}", file.display())
-                    })?;
-
-                if output.status.success() {
-                    log::debug!("Processed file: {}", file.display());
-                    log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-                    processed.fetch_add(1, Ordering::Relaxed);
-                } else {
-                    log::error!("Script failed for file: {}", file.display());
-                    log::error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-                    errored.fetch_add(1, Ordering::Relaxed);
+    let results: Vec<TaskOutcome> = chunk
+        .par_iter()
+        .map(|file| -> TaskOutcome {
+            match script {
+                _ if should_cancel() => {
+                    log::info!("Cancelling task for file: {}", file.display());
+                    TaskOutcome::Cancelled
+                }
+                Some(script_path) => {
+                    match Command::new(script_path)
+                        .arg(file)
+                        .output()
+                        .with_context(|| {
+                            format!("Failed to execute script for file: {}", file.display())
+                        }) {
+                        Ok(output) if output.status.success() => {
+                            log::debug!("Processed file: {}", file.display());
+                            log::debug!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+                            TaskOutcome::Processed
+                        }
+                        Ok(output) => {
+                            log::error!("Script failed for file: {}", file.display());
+                            log::error!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+                            TaskOutcome::Errored
+                        }
+                        Err(e) => {
+                            log::error!("Failed to execute script for file: {}", file.display());
+                            log::error!("Error: {}", e);
+                            TaskOutcome::Errored
+                        }
+                    }
+                }
+                None => {
+                    log::info!("Skipping script execution for file: {}", file.display());
+                    TaskOutcome::Processed
                 }
             }
-            None if should_cancel() => {
-                log::info!("Cancelling task for file: {}", file.display());
-            }
-            None => {
-                // Directly log the file name
-                log::info!("Would process file: {}", file.display());
-                processed.fetch_add(1, Ordering::Relaxed);
-            }
-        }
+        })
+        .collect();
 
-        Ok(())
-    })?;
+    let processed = results
+        .iter()
+        .filter(|r| matches!(r, TaskOutcome::Processed))
+        .count();
+    let errored = results
+        .iter()
+        .filter(|r| matches!(r, TaskOutcome::Errored))
+        .count();
+    let cancelled = results
+        .iter()
+        .filter(|r| matches!(r, TaskOutcome::Cancelled))
+        .count();
 
-    Ok((
-        processed.load(Ordering::Relaxed),
-        errored.load(Ordering::Relaxed),
-    ))
+    Ok((processed, errored, cancelled))
 }
 
 #[cfg(test)]
@@ -108,6 +126,7 @@ mod parallelize_chunk_tests {
     use std::fs::File;
     use std::io::Write;
     use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering;
     use std::sync::Arc;
     use tempfile::TempDir;
 
@@ -128,10 +147,12 @@ mod parallelize_chunk_tests {
         let term_flag = Arc::new(AtomicBool::new(false));
         let should_cancel = || term_flag.load(Ordering::Relaxed);
 
-        let (processed, errored) = parallelize_chunk(&files, None, should_cancel).unwrap();
+        let (processed, errored, cancelled) =
+            parallelize_chunk(&files, None, should_cancel).unwrap();
 
         assert_eq!(processed, 5);
         assert_eq!(errored, 0);
+        assert_eq!(cancelled, 0);
     }
 
     #[test]
@@ -141,10 +162,12 @@ mod parallelize_chunk_tests {
         let term_flag = Arc::new(AtomicBool::new(true));
         let should_cancel = || term_flag.load(Ordering::Relaxed);
 
-        let (processed, errored) = parallelize_chunk(&files, None, should_cancel).unwrap();
+        let (processed, errored, cancelled) =
+            parallelize_chunk(&files, None, should_cancel).unwrap();
 
         assert_eq!(processed, 0);
         assert_eq!(errored, 0);
+        assert_eq!(cancelled, 5);
     }
 
     #[test]
@@ -170,11 +193,12 @@ mod parallelize_chunk_tests {
         let term_flag = Arc::new(AtomicBool::new(false));
         let should_cancel = || term_flag.load(Ordering::Relaxed);
 
-        let (processed, errored) =
+        let (processed, errored, cancelled) =
             parallelize_chunk(&files, Some(&script_path), should_cancel).unwrap();
 
         assert_eq!(processed, 3);
         assert_eq!(errored, 0);
+        assert_eq!(cancelled, 0);
     }
 }
 

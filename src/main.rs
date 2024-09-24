@@ -55,39 +55,51 @@ fn process_files(context: &ProcessingContext) -> Result<()> {
 
     term_if_signal_rcvd!(context);
 
-    let (processed_files, errored_files) = process_file_chunks(context, &files)?;
+    let (processed_files, errored_files, cancelled_files) = process_file_chunks(context, &files)?;
 
-    log_processing_results(&files, processed_files, errored_files);
+    log_processing_results(&files, processed_files, errored_files, cancelled_files);
 
     Ok(())
 }
 
-fn process_file_chunks(context: &ProcessingContext, files: &[PathBuf]) -> Result<(usize, usize)> {
+fn process_file_chunks(
+    context: &ProcessingContext,
+    files: &[PathBuf],
+) -> Result<(usize, usize, usize)> {
     let total_chunks = (files.len() + context.chunk_size - 1) / context.chunk_size;
     let mut processed_files = 0;
     let mut errored_files = 0;
+    let mut cancelled_files = 0;
 
     for (n, chunk) in files.chunks(context.chunk_size).enumerate() {
-        term_if_signal_rcvd!(context, (processed_files, errored_files));
+        term_if_signal_rcvd!(context, (processed_files, errored_files, cancelled_files));
 
         log::debug!("chunk {}/{} ({}): START", n + 1, total_chunks, chunk.len());
 
         let should_cancel = || context.term_signal_rcvd();
-        let (processed, errored) = pfp::parallelize_chunk(chunk, context.script, should_cancel)?;
+        let (processed, errored, cancelled) =
+            pfp::parallelize_chunk(chunk, context.script, should_cancel)?;
 
         processed_files += processed;
         errored_files += errored;
+        cancelled_files += cancelled;
 
         log::debug!("chunk {}/{} ({}): DONE", n + 1, total_chunks, chunk.len());
     }
 
-    Ok((processed_files, errored_files))
+    Ok((processed_files, errored_files, cancelled_files))
 }
 
-fn log_processing_results(files: &[PathBuf], processed_files: usize, errored_files: usize) {
+fn log_processing_results(
+    files: &[PathBuf],
+    processed_files: usize,
+    errored_files: usize,
+    cancelled_files: usize,
+) {
     log::debug!("Total number of files {}", files.len());
     log::debug!("Total number of processed files {}", processed_files);
     log::debug!("Total number of errored files {}", errored_files);
+    log::debug!("Total number of cancelled files {}", cancelled_files);
     log::info!("PFP: Finished processing all files in input-path.");
 }
 
