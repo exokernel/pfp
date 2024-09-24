@@ -61,7 +61,7 @@ where
 
     chunk.par_iter().try_for_each(|file| -> Result<()> {
         match script {
-            Some(_) if should_cancel() => {
+            _ if should_cancel() => {
                 log::info!("Cancelling task for file: {}", file.display());
                 return Ok(());
             }
