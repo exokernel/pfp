@@ -97,7 +97,7 @@ where
                     }
                 }
                 None => {
-                    log::info!("Skipping script execution for file: {}", file.display());
+                    log::info!("Would process file: {}", file.display());
                     TaskOutcome::Processed
                 }
             }
