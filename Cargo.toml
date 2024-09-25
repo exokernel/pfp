@@ -30,6 +30,8 @@ rayon = "1.10.0"
 
 # file system
 walkdir = "2.5.0"
+
+# error handling
 anyhow = "1.0.89"
 
 [dev-dependencies]
