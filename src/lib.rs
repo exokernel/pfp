@@ -222,23 +222,21 @@ mod parallelize_chunk_tests {
 /// This function may return an error if there are issues with file system operations
 /// or directory traversal.
 pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<Vec<PathBuf>> {
-    let should_include = |file_path: &Path| -> bool {
-        if let Some(exts) = extensions {
-            file_path
-                .extension()
-                .map(|ext| exts.contains(&ext))
-                .unwrap_or(false)
-        } else {
-            true
-        }
-    };
-
     // Check if the input path exists before walking
     if !input_path.exists() {
         return Err(anyhow!("Input path does not exist"));
     }
 
-    // TODO: parallelize this with rayon!
+    // should_include is a closure that determines whether a file should be included
+    // based on its extension. If extensions are provided, it checks if the file's
+    // extension is in the list. If no extensions are provided, all files are included.
+    let should_include = |file_path: &Path| -> bool {
+        extensions.as_ref().map_or(true, |exts| {
+            file_path
+                .extension()
+                .map_or(false, |ext| exts.contains(&ext))
+        })
+    };
 
     // For loop isn't idiomatic Rust, but it was a start
     //for entry in WalkDir::new(input_path).into_iter() {
@@ -264,6 +262,7 @@ pub fn get_files(input_path: &Path, extensions: &Option<Vec<&OsStr>>) -> Result<
 
     // Even better is using filter_map to handle both Ok and Err cases
     // See https://doc.rust-lang.org/rust-by-example/error/iter_result.html#fail-the-entire-operation-with-collect
+    // TODO: parallelize this with rayon!
     let files = WalkDir::new(input_path)
         .into_iter()
         .filter_map(|entry| {
